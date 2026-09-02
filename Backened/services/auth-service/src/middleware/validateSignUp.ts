@@ -1,7 +1,6 @@
 import {z } from "zod"
 
 import { Request, Response, NextFunction } from "express"
-import { error } from "node:console"
 
 
 const signUpSchema = z.object({
