@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "NodeNext",       // tells typescript when u translate my .ts into .js file write the output using real modern import/exportv  syntax that matches exactly how Node's own ESM system expects files to look and resolve each other   ithout this typescript might translate your code into the older require() style  
+    "module": "NodeNext",       
     "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true     // Normally, TypeScript checks types not just in your code, but inside every single package you’ve installed too — express, pg, everything in node_modules. That’s genuinely a lot of extra files to scan, and slows down every single compile. skipLibCheck: true says: “trust that the authors of these libraries already tested their own code correctly — only check my files.”
-
-  }
+    "skipLibCheck": true     
+  },
+  "include" : ["src/**/*"]
 }
 
 
