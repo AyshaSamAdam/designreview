@@ -27,6 +27,11 @@ services:
       - "5434:5432"
     volumes:
       - diagram_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d diagram_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   postgres-review:
     image: postgres:16
@@ -38,6 +43,11 @@ services:
       - "5435:5432"
     volumes:
       - review_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d review_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
