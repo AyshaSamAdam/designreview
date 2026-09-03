@@ -92,3 +92,43 @@ export async function getOneDiagram(req : authRequest, res :Response) {
 
     
 }
+
+export async function updateDiagram(req : authRequest, res :Response) {
+
+     const id = req.params.id as string;
+     const {title, nodes, edges} = req.body;
+
+
+     try{
+        const existing = await prisma.diagram.findUnique({
+            where : {id}
+
+        })
+
+        if (!existing) {
+            return res.status(404).json({error : "Diagram not Found"})
+        }
+        if (existing.userId !== req.userId) {
+              return res.status(403).json({error : "Forbidden"})
+        }
+        
+        const updated = await prisma.diagram.update({
+            where : {id},
+            data : {
+                title, 
+                nodes,
+                edges
+            }
+        })
+
+        return res.status(200).json(updated)
+
+
+     }
+     catch(error) {
+        console.log(error)
+        return res.status(500).json({ error : "Something Went Wrong"})
+
+     }
+    
+}
