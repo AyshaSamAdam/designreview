@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import prisma from "../db.js"
 import jwt  from "jsonwebtoken"
 import  crypto from "crypto"
+import { authRequest } from "../middleware/autheticate.js"
 
 
 
@@ -96,7 +97,6 @@ export async function logIn(req : Request, res : Response) {
 }
 
 
-
 export async function refresh(req : Request, res : Response) {
     if (!req.body || !req.body.refreshToken) {
         return res.status(400).json({error : "Refresh token required in request body"})
@@ -153,7 +153,6 @@ export async function refresh(req : Request, res : Response) {
     }
 }
 
-
 export async function logOut(req : Request, res : Response) {
     const { refreshToken} = req.body;
 
@@ -177,4 +176,61 @@ export async function logOut(req : Request, res : Response) {
     }
     
 }
+
+export async function getProfile(req : authRequest, res : Response) {
+    try {
+        const user = await prisma.user.findUnique({
+            where : {id : req.userId},
+            select : {
+                id : true,
+                email : true,
+                name  : true,
+                createdAt : true
+            }
+        })
+
+        if (!user) {
+            return res.status(404).json({
+                error : "User not Found"
+            })
+        }
+
+            return res.status(200).json(user)
+    }  
+    
+    catch(error ) {
+        console.log(error)
+        
+            return res.status(500).json({error : "Something Went Wrong"})
+
+    }
+} 
    
+
+export async function updateProfile(req : authRequest, res : Response) {
+    const {name } = req.body
+
+    try{
+        const user = await prisma.user.update({
+            where : {id : req.userId},
+            data :{name},
+            select : {
+                id : true,
+                email : true,
+                name : true,
+                createdAt : true
+            }
+        })
+
+        return res.status(200).json(user)
+
+
+    }
+    catch(error) {
+        console.log(error)
+        return res.status(500).json({
+            error  : "Something Went Wrong"
+        })
+    }
+    
+}
