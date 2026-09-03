@@ -7,7 +7,10 @@ app.use(express.json())
 
 
 
-app.use("/diagram", diagramRoutes)
+app.use("/diagrams", diagramRoutes)
+
+
+
 
 app.get("/health", (req, res) => {
      res.json({status :  "diagram service is alive"})
