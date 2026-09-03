@@ -152,4 +152,29 @@ export async function refresh(req : Request, res : Response) {
         return res.status(500).json({error : "Something went Wrong"})
     }
 }
+
+
+export async function logOut(req : Request, res : Response) {
+    const { refreshToken} = req.body;
+
+    if (!refreshToken) {
+        return res.status(400).json({error : "Refresh token required"})
+    }
+    try{
+
+        await prisma.refreshToken.deleteMany(
+            {where : {token : refreshToken}}
+        )
+
+        return res.status(200).json({message : "Logged Out succesfully !"})
+
+
+    }
+    catch(error) {
+        console.log(error)
+        return res.status(500).json({error : "Something Went Wrong"})
+
+    }
+    
+}
    
