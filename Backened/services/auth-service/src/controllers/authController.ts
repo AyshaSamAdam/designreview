@@ -98,6 +98,9 @@ export async function logIn(req : Request, res : Response) {
 
 
 export async function refresh(req : Request, res : Response) {
+    if (!req.body || !req.body.refreshToken) {
+        return res.status(400).json({error : "Refresh token required in request body"})
+    }
     const {refreshToken} = req.body
 
     if ( !refreshToken) {
@@ -116,7 +119,9 @@ export async function refresh(req : Request, res : Response) {
         if (!storedToken || storedToken.expiresAt < new Date()) {
             return res.status(401).json({error : "Invalid or expired refresh token "})
         }
-
+        await prisma.refreshToken.delete({
+            where : {id : storedToken.id}
+        })
         const newAccessToken = jwt.sign(
             {userId : storedToken.userId},
             process.env.JWT_SECRET as string,
@@ -124,8 +129,21 @@ export async function refresh(req : Request, res : Response) {
         
         );
 
+        const newRefreshTokenValue = crypto.randomBytes(40).toString("hex");
+        const newRefreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+
+        await prisma.refreshToken.create({
+            data : {
+                token : newRefreshTokenValue,
+                userId : storedToken.userId,
+                expiresAt : newRefreshTokenExpiry
+            }
+        })
+
         return res.status(200).json({
-         accessToken : newAccessToken
+         accessToken : newAccessToken,
+         refreshToken : newRefreshTokenValue
         })
 
     }
