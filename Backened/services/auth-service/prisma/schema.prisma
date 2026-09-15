@@ -15,6 +15,7 @@ model User {
   role         String @default("user")
   createdAt    DateTime @default(now())
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model RefreshToken {
@@ -23,6 +24,17 @@ model RefreshToken {
   userId String
   user User @relation(fields: [userId], references: [id])
   expiresAt DateTime
+  createdAt DateTime @default(now())
+
+}
+
+
+model PasswordResetToken {
+   id String @id @default(uuid())
+   token String @unique
+   userId  String
+   user User @relation(fields: [userId], references: [id])
+   expiresAt DateTime
   createdAt DateTime @default(now())
 
 }

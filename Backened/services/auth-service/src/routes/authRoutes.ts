@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {logIn, signUp, refresh, logOut, getProfile, updateProfile} from '../controllers/authController.js'
+import {logIn, signUp, refresh, logOut, getProfile, updateProfile, forgotPassword, resetPassword} from '../controllers/authController.js'
 import { validateSignup } from "../middleware/validateSignUp.js";
 import { validateLogin } from "../middleware/validateLogin.js";
 import { authenticate, authRequest } from "../middleware/autheticate.js";
@@ -7,6 +7,7 @@ import { loginLimiter } from "../middleware/ratelimiter.js";
 import { validateUpdateProfile } from "../middleware/validateProfile.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import prisma from "../db.js";
+import { validateForgotPassword, validateResetPassword } from "../middleware/validatePasswordReset.js";
 
 const router = Router();
 
@@ -28,6 +29,9 @@ router.get("/admin/users", authenticate ,requireAdmin, async (req, res) => {
      res.json(users)
 
 })
+
+router.post("/forgot-password", validateForgotPassword, forgotPassword)
+router.post("/reset-password", validateResetPassword, resetPassword)
 
 
 

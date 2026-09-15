@@ -4,6 +4,8 @@ import prisma from "../db.js"
 import jwt  from "jsonwebtoken"
 import  crypto from "crypto"
 import { authRequest } from "../middleware/autheticate.js"
+import { Resend } from "resend"
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 
 
@@ -233,4 +235,79 @@ export async function updateProfile(req : authRequest, res : Response) {
         })
     }
     
+}
+
+
+export async function forgotPassword(req : Request, res : Response) {
+
+    const { email } = req.body
+
+    try {
+          const user = await prisma.user.findUnique({where : {email}})
+
+          if( user) {
+            const resetToken =  crypto.randomBytes(32).toString("hex");
+            const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hr 
+
+
+            await prisma.passwordResetToken.create({
+                data : {token : resetToken, userId : user.id, expiresAt}
+            })
+
+
+            await  resend.emails.send({
+                from : "onboarding@resend.dev",
+                to : email,
+                subject : " Reset Your DesignReview password",
+                html : `<p> Click to reset your password : <a href="http://localhost:3000/reset-password?token=${resetToken}"> Reset Password </a></p>  <p> This link expires in 1 hour. </p>`
+
+            })
+          }
+
+          return res.status(200).json({
+            message : "If an account exists with taht email, a reset link has been sent. ",
+
+          })
+
+
+    } 
+    catch(err) {
+        console.log(err)
+        return res.status(500).json({ error : "Something went wrong"})
+    }
+}
+
+export async function resetPassword( req : Request, res : Response) {
+    const { token , newPassword} = req.body
+  
+
+    try {
+        const resetToken = await prisma.passwordResetToken.findUnique({ where : {token} })
+        
+    
+        if (!resetToken || resetToken.expiresAt < new Date()) {
+            return res.status(400).json({ error : "Invalid or expired reset token "})
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10)
+
+        await prisma.user.update({
+            where : {id : resetToken.userId},
+            data : {passwordHash}
+        })
+  
+        await prisma.passwordResetToken.delete({where : {id : resetToken.id}})
+
+        await prisma.refreshToken.deleteMany({where : {userId : resetToken.userId}})
+
+
+        return res.status(200).json({
+            message : "Password reset Succesfully !"
+        })
+
+    }
+    catch(err) {
+        console.log(err)
+        return res.status(500).json({ error : "Something went Wrong "})
+    }
 }
