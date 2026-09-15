@@ -78,9 +78,6 @@ export async function getOneDiagram(req : authRequest, res :Response) {
         return res.status(200).json(diagram)
         
 
-
-
-
       }
       catch(error ) {
         console.log(error)
