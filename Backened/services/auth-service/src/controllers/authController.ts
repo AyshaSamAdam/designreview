@@ -61,14 +61,38 @@ export async function logIn(req : Request, res : Response) {
             })
          }
 
+
+         if (user.lockedUntil && user.lockedUntil > new Date()) {
+            return res.status(423).json({
+                error : "Account temporarily locked due to too many failed attempts. Try again later."
+            })
+         }
+
          const passwordMatches = await bcrypt.compare(password, user.passwordHash);
 
          if (!passwordMatches) {
+            const attempts = user.failedLoginAttempts + 1;
+            const shouldLock = attempts >=5 ;
+
+            await prisma.user.update({
+                where : {id : user.id},
+                data : {
+                    failedLoginAttempts : attempts,
+                    lockedUntil : shouldLock ? new Date(Date.now() + 15 * 60  * 1000) : null,
+                }
+            })
             return res.status(401).json({
                 error : "Invalid Email or Password"
             })
          }
+  
 
+         // if he got it correct password like in 2 or 3 or 4 attempt just take evrything back to normal  REST BACK EVERYTHING TO 0 WHEN THEY GET THE PASSWORD RIGHT 
+
+         await prisma.user.update({
+            where : {id : user.id},
+            data : {failedLoginAttempts : 0, lockedUntil : null}
+         })
 
        const accessToken  = jwt.sign({userId : user.id}, process.env.JWT_SECRET as string, {expiresIn : "15m"})
 

@@ -14,6 +14,8 @@ model User {
   googleId     String? @unique
   name         String
   role         String @default("user")
+  failedLoginAttempts Int @default(0)
+  lockedUntil           DateTime?
   createdAt    DateTime @default(now())
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -26,6 +28,8 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
 
 }
 
