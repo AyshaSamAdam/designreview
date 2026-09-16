@@ -2,6 +2,7 @@ import { Response } from "express";
 import prisma from "../db.js";
 import { authRequest } from "../middleware/authenticate.js";
 import { Prisma } from "@prisma/client";
+import redis from "../redis.js";
 
 export async function createDiagram(req : authRequest, res :Response) {
 
@@ -70,40 +71,77 @@ export async function getAllDiagrams(req : authRequest, res :Response) {
     
 }
 
-export async function getOneDiagram(req : authRequest, res :Response) {
-      const  id = req.params.id as string;
+// export async function getOneDiagram(req : authRequest, res :Response) {
+//       const  id = req.params.id as string;
 
-      try{
+//       try{
 
-        const diagram = await prisma.diagram.findUnique({
-            where  : { id}
-        })
+//         const diagram = await prisma.diagram.findUnique({
+//             where  : { id}
+//         })
 
-        if (!diagram) {
-            return res.status(404).json({
-                error : "Diagram not found"
-            })
-        }
+//         if (!diagram) {
+//             return res.status(404).json({
+//                 error : "Diagram not found"
+//             })
+//         }
 
-        if (diagram.userId !== req.userId) {
-             return res.status(403).json({
-                error : "Forbidden "
-            })
-        }
+//         if (diagram.userId !== req.userId) {
+//              return res.status(403).json({
+//                 error : "Forbidden "
+//             })
+//         }
 
-        return res.status(200).json(diagram)
+//         return res.status(200).json(diagram)
         
 
-      }
-      catch(error ) {
-        console.log(error)
-        return res.status(500).json({
-             error : "Something Went Wrong"
-        })
+//       }
+//       catch(error ) {
+//         console.log(error)
+//         return res.status(500).json({
+//              error : "Something Went Wrong"
+//         })
 
-      }
+//       }
 
     
+// }
+
+
+export async function getOneDiagram(req: authRequest, res: Response) {
+  const id = req.params.id as string;
+  const cacheKey = `diagram:${id}`;
+
+  try {
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      const diagram = JSON.parse(cached);
+
+      if (diagram.userId !== req.userId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      return res.status(200).json(diagram);
+    }
+
+    const diagram = await prisma.diagram.findUnique({ where: { id } });
+
+    if (!diagram) {
+      return res.status(404).json({ error: "Diagram not found" });
+    }
+
+    if (diagram.userId !== req.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    await redis.set(cacheKey, JSON.stringify(diagram), "EX", 300);
+
+    return res.status(200).json(diagram);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Something went wrong" });
+  }
 }
 
 export async function updateDiagram(req : authRequest, res :Response) {
@@ -133,6 +171,8 @@ export async function updateDiagram(req : authRequest, res :Response) {
                 edges
             }
         })
+
+          await redis.del(`diagram:${id}`)
 
         return res.status(200).json(updated)
 
