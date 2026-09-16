@@ -5,6 +5,7 @@ import jwt  from "jsonwebtoken"
 import  crypto from "crypto"
 import { authRequest } from "../middleware/autheticate.js"
 import { Resend } from "resend"
+import { googleClient } from "../googleAuth.js"
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 
@@ -311,3 +312,75 @@ export async function resetPassword( req : Request, res : Response) {
         return res.status(500).json({ error : "Something went Wrong "})
     }
 }
+
+
+// REAL GOOGLE LOGIN SCREEN APPEARED AFTE RTHIS CONTROLLER WORKS  
+export async function googleLogin(req : Request, res : Response) {
+    const authorizedUrl = googleClient.generateAuthUrl({
+        access_type : "offline",
+        scope : ["profile", "email"]
+    });
+    res.redirect(authorizedUrl)
+    
+}
+
+//  cALLback 
+export async function googleCallback(req: Request, res: Response) {
+  const code = req.query.code as string;
+
+  if (!code) {
+    return res.status(400).json({ error: "No authorization code provided" });
+  }
+
+  try {
+    const { tokens } = await googleClient.getToken(code);
+    googleClient.setCredentials(tokens);
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokens.id_token as string,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email) {
+      return res.status(400).json({ error: "Could not retrieve profile from Google" });
+    }
+
+    let user = await prisma.user.findUnique({ where: { email: payload.email } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: payload.email,
+          name: payload.name || "Google User",
+          googleId: payload.sub,
+        },
+      });
+    } else if (!user.googleId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: payload.sub },
+      });
+    }
+
+    const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: "15m" });
+
+    const refreshTokenValue = crypto.randomBytes(40).toString("hex");
+    const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.refreshToken.create({
+      data: { token: refreshTokenValue, userId: user.id, expiresAt: refreshTokenExpiry },
+    });
+
+    return res.status(200).json({
+      accessToken,
+      refreshToken: refreshTokenValue,
+      user: { id: user.id, email: user.email, name: user.name },
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Google authentication failed" });
+  }
+}
+

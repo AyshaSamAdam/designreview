@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {logIn, signUp, refresh, logOut, getProfile, updateProfile, forgotPassword, resetPassword} from '../controllers/authController.js'
+import {logIn, signUp, refresh, logOut, getProfile, updateProfile, forgotPassword, resetPassword, googleLogin, googleCallback} from '../controllers/authController.js'
 import { validateSignup } from "../middleware/validateSignUp.js";
 import { validateLogin } from "../middleware/validateLogin.js";
 import { authenticate, authRequest } from "../middleware/autheticate.js";
@@ -32,7 +32,7 @@ router.get("/admin/users", authenticate ,requireAdmin, async (req, res) => {
 
 router.post("/forgot-password", validateForgotPassword, forgotPassword)
 router.post("/reset-password", validateResetPassword, resetPassword)
-
-
+router.get("/google", googleLogin)
+router.get("/google/callback", googleCallback)
 
 export default router;
