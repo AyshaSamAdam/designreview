@@ -1,5 +1,6 @@
 import { z } from "zod"
 import {Request, Response, NextFunction} from "express"
+import { futimes } from "node:fs"
 
 
 const diagramSchema = z.object({
@@ -16,6 +17,22 @@ export function validateDiagram(req : Request, res : Response, next : NextFuncti
     const result = diagramSchema.safeParse(req.body)
 
     if (!result.success) {
+        return res.status(400).json({
+            error : result.error.issues
+        })
+    }
+    req.body = result.data
+    next();
+
+}
+
+
+const updateDiagramSchema = diagramSchema.partial();
+
+export function validateDiagramUpdate (req : Request, res : Response, next : NextFunction) {
+    const result = updateDiagramSchema.safeParse(req.body);
+
+       if (!result.success) {
         return res.status(400).json({
             error : result.error.issues
         })
