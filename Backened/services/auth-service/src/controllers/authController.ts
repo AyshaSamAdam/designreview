@@ -6,6 +6,7 @@ import  crypto from "crypto"
 import { authRequest } from "../middleware/autheticate.js"
 import { Resend } from "resend"
 import { googleClient } from "../googleAuth.js"
+import { clearAuthCookies, clearOauthStateCookie, setAuthCookies, setOauthStateCookie } from "../lib/authCookie.js"
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 
@@ -107,6 +108,8 @@ export async function logIn(req : Request, res : Response) {
           }
         })
 
+        setAuthCookies(res, accessToken, refreshTokenValue)
+
          return res.status(200).json({
             accessToken ,
             refreshToken : refreshTokenValue,
@@ -124,84 +127,68 @@ export async function logIn(req : Request, res : Response) {
 }
 
 
-export async function refresh(req : Request, res : Response) {
-    if (!req.body || !req.body.refreshToken) {
-        return res.status(400).json({error : "Refresh token required in request body"})
+export async function refresh(req: Request, res: Response) {
+  const refreshToken = req.cookies?.refresh_token ?? req.body?.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ error: "Refresh token required" });
+  }
+
+  try {
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+    });
+
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: "Invalid or expired refresh token" });
     }
-    const {refreshToken} = req.body
 
-    if ( !refreshToken) {
-        return res.status(401).json({
-            error : "Refresh token required"
-        })
-    }
+    await prisma.refreshToken.delete({ where: { id: storedToken.id } });
 
-    try{
+    const newAccessToken = jwt.sign(
+      { userId: storedToken.userId },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "15m" }
+    );
 
-        const storedToken = await prisma.refreshToken.findUnique({
-            where : {token :refreshToken }
-        })
+    const newRefreshTokenValue = crypto.randomBytes(40).toString("hex");
+    const newRefreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshTokenValue,
+        userId: storedToken.userId,
+        expiresAt: newRefreshTokenExpiry,
+      },
+    });
 
-        if (!storedToken || storedToken.expiresAt < new Date()) {
-            return res.status(401).json({error : "Invalid or expired refresh token "})
-        }
-        await prisma.refreshToken.delete({
-            where : {id : storedToken.id}
-        })
-        const newAccessToken = jwt.sign(
-            {userId : storedToken.userId},
-            process.env.JWT_SECRET as string,
-            {expiresIn : "15m"}
-        
-        );
+    setAuthCookies(res, newAccessToken, newRefreshTokenValue);
 
-        const newRefreshTokenValue = crypto.randomBytes(40).toString("hex");
-        const newRefreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-
-        await prisma.refreshToken.create({
-            data : {
-                token : newRefreshTokenValue,
-                userId : storedToken.userId,
-                expiresAt : newRefreshTokenExpiry
-            }
-        })
-
-        return res.status(200).json({
-         accessToken : newAccessToken,
-         refreshToken : newRefreshTokenValue
-        })
-
-    }
-    catch(error) {
-        console.log(error)
-        return res.status(500).json({error : "Something went Wrong"})
-    }
+    return res.status(200).json({
+      accessToken: newAccessToken,
+      refreshToken: newRefreshTokenValue,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Something went wrong" });
+  }
 }
 
-export async function logOut(req : Request, res : Response) {
-    const { refreshToken} = req.body;
+export async function logOut(req: Request, res: Response) {
+  const refreshToken = req.cookies?.refresh_token ?? req.body?.refreshToken;
 
-    if (!refreshToken) {
-        return res.status(400).json({error : "Refresh token required"})
+  try {
+    if (refreshToken) {
+      await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
     }
-    try{
 
-        await prisma.refreshToken.deleteMany(
-            {where : {token : refreshToken}}
-        )
-
-        return res.status(200).json({message : "Logged Out succesfully !"})
-
-
-    }
-    catch(error) {
-        console.log(error)
-        return res.status(500).json({error : "Something Went Wrong"})
-
-    }
-    
+    clearAuthCookies(res);
+    return res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Something went wrong" });
+  }
 }
 
 export async function getProfile(req : authRequest, res : Response) {
@@ -340,9 +327,11 @@ export async function resetPassword( req : Request, res : Response) {
 
 // REAL GOOGLE LOGIN SCREEN APPEARED AFTE RTHIS CONTROLLER WORKS  
 export async function googleLogin(req : Request, res : Response) {
+    const state = crypto.randomBytes(32).toString("hex")
+    setOauthStateCookie(res, state)
     const authorizedUrl = googleClient.generateAuthUrl({
-        access_type : "offline",
-        scope : ["profile", "email"]
+        scope : ["profile", "email"],
+        state
     });
     res.redirect(authorizedUrl)
     
@@ -350,15 +339,20 @@ export async function googleLogin(req : Request, res : Response) {
 
 //  cALLback 
 export async function googleCallback(req: Request, res: Response) {
-  const code = req.query.code as string;
+  const failed = `${process.env.FRONTEND_URL}/sign-in?error=google_failed`;
 
-  if (!code) {
-    return res.status(400).json({ error: "No authorization code provided" });
+  const code = req.query.code as string | undefined;
+  const state = req.query.state as string | undefined;
+  const savedState = req.cookies?.oauth_state;
+
+  clearOauthStateCookie(res);
+
+  if (!code || !state || !savedState || state !== savedState) {
+    return res.redirect(failed);
   }
 
   try {
     const { tokens } = await googleClient.getToken(code);
-    googleClient.setCredentials(tokens);
 
     const ticket = await googleClient.verifyIdToken({
       idToken: tokens.id_token as string,
@@ -367,8 +361,8 @@ export async function googleCallback(req: Request, res: Response) {
 
     const payload = ticket.getPayload();
 
-    if (!payload || !payload.email) {
-      return res.status(400).json({ error: "Could not retrieve profile from Google" });
+    if (!payload || !payload.email || !payload.email_verified) {
+      return res.redirect(failed);
     }
 
     let user = await prisma.user.findUnique({ where: { email: payload.email } });
@@ -397,14 +391,12 @@ export async function googleCallback(req: Request, res: Response) {
       data: { token: refreshTokenValue, userId: user.id, expiresAt: refreshTokenExpiry },
     });
 
-    return res.status(200).json({
-      accessToken,
-      refreshToken: refreshTokenValue,
-      user: { id: user.id, email: user.email, name: user.name },
-    });
+    setAuthCookies(res, accessToken, refreshTokenValue);
+
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ error: "Google authentication failed" });
+    return res.redirect(failed);
   }
 }
 
