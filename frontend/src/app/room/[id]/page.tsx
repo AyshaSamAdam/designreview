@@ -21,11 +21,12 @@ export default function RoomPage() {
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [presentUsers, setPresentUsers] = useState<string[]>([])
 
   useEffect(() => {
 
     const newSocket = io("http://localhost:4003", {
-      auth: { token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNjVkYjgwYy0wYTQwLTQwMjctODdkOC0zODE4ZWVlYWFmYWYiLCJpYXQiOjE3OTA2NDg5ODUsImV4cCI6MTc5MDY0OTg4NX0.K_Qdz6xIaZcdTopWKrNN9gBZASVHatjDROkzRh5UjfU" },
+      auth: { token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNjVkYjgwYy0wYTQwLTQwMjctODdkOC0zODE4ZWVlYWFmYWYiLCJpYXQiOjE3OTA2ODk2MDIsImV4cCI6MTc5MDY5MDUwMn0.r5Q7dBUHuZr06VsWFHwtL6gXOVJWiEKlsRsLsy0ZDQk" },
     });
 
     newSocket.on("connect", () => {
@@ -38,6 +39,9 @@ export default function RoomPage() {
 
     setSocket(newSocket);
 
+      newSocket.on("presence-update", (userIds : string[]) => {
+        setPresentUsers(userIds)
+      })
     return () => {
       newSocket.disconnect();
     };
@@ -52,7 +56,9 @@ export default function RoomPage() {
   };
 
   return (
+
     <div style={{ width: "100vw", height: "100vh" }}>
+      <p>Currently in room : {presentUsers.join(", ") } </p>
       <ReactFlow nodes={nodes} onNodesChange={onNodesChange} />
     </div>
   );
