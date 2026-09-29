@@ -3,58 +3,57 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
+import ReactFlow, { Node, applyNodeChanges, NodeChange } from "reactflow";
+import "reactflow/dist/style.css";
+
+
+
+const initialNodes: Node[] = [
+  { id: "1", position: { x: 100, y: 100 }, data: { label: "Drag me!" } },
+];
+
+
+
 
 export default function RoomPage() {
   const params = useParams();
   const diagramId = params.id as string;
 
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<any>(null);
-
-
-
+  const [nodes, setNodes] = useState<Node[]>(initialNodes);
 
   useEffect(() => {
 
-            const newSocket = io("http://localhost:4003", {
-            auth: {
-                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNjVkYjgwYy0wYTQwLTQwMjctODdkOC0zODE4ZWVlYWFmYWYiLCJpYXQiOjE3ODk2MjEwNjYsImV4cCI6MTc4OTYyMTk2Nn0.7EoCtp9-c-j5K3zFEfaEaqB49L-7JpP_WheccuaY1EY",
-            },
-            });
+    const newSocket = io("http://localhost:4003", {
+      auth: { token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNjVkYjgwYy0wYTQwLTQwMjctODdkOC0zODE4ZWVlYWFmYWYiLCJpYXQiOjE3OTA2NDg5ODUsImV4cCI6MTc5MDY0OTg4NX0.K_Qdz6xIaZcdTopWKrNN9gBZASVHatjDROkzRh5UjfU" },
+    });
 
-            newSocket.on("connect", () => {
-            setConnected(true);
-            newSocket.emit("join-room", diagramId);
-            });
+    newSocket.on("connect", () => {
+      newSocket.emit("join-room", diagramId);
+    });
 
-            newSocket.on("node-update", (nodes) => {
-            setLastUpdate(nodes);
-            });
+    newSocket.on("node-update", (updatedNodes: Node[]) => {
+      setNodes(updatedNodes);
+    });
 
-            setSocket(newSocket);
+    setSocket(newSocket);
 
-            return () => {
-            newSocket.disconnect();
-            };
-
+    return () => {
+      newSocket.disconnect();
+    };
   }, [diagramId]);
 
-
-
-  const sendFakeUpdate = () => {
-    socket?.emit("node-update", {
-      diagramId,
-      nodes: [{ x: Math.random() * 500, y: Math.random() * 500 }],
+  const onNodesChange = (changes: NodeChange[]) => {
+    setNodes((currentNodes) => {
+      const updated = applyNodeChanges(changes, currentNodes);
+      socket?.emit("node-update", { diagramId, nodes: updated });
+      return updated;
     });
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Room: {diagramId}</h1>
-      <p>Connected: {connected ? "Yes" : "No"}</p>
-      <button onClick={sendFakeUpdate}>Send fake update</button>
-      {lastUpdate && <p>Update happned : {JSON.stringify(lastUpdate)}</p>}
+    <div style={{ width: "100vw", height: "100vh" }}>
+      <ReactFlow nodes={nodes} onNodesChange={onNodesChange} />
     </div>
   );
 }
