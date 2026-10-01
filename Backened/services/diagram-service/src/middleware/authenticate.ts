@@ -6,14 +6,14 @@ export interface authRequest extends Request {
     userId?: string;
 }
 export function authenticate(req: authRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+  const header = req.headers.authorization;
+  const token = req.cookies?.access_token ??  (header && header.startsWith("Bearer ") ? header.split(" ")[1] : undefined)
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!token ) {
     return res.status(401).json({ error: "No token provided" });
   }
 
-  const token = authHeader.split(" ")[1];
-
+ 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
     req.userId = payload.userId;

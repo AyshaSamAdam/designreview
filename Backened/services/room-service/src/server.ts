@@ -20,7 +20,10 @@ const env = envSchema.parse(process.env);
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
-  cors: { origin: "http://localhost:3000" },
+  cors: { 
+      origin: "http://localhost:3000" ,
+     credentials : true, },
+ 
 });
 
 const pubClient = createClient({ url: env.REDIS_URL });

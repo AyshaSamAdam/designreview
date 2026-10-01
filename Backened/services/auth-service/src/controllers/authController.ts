@@ -111,8 +111,6 @@ export async function logIn(req : Request, res : Response) {
         setAuthCookies(res, accessToken, refreshTokenValue)
 
          return res.status(200).json({
-            accessToken ,
-            refreshToken : refreshTokenValue,
             user : {id : user.id, email : user.email, name : user.name}
          })
 
@@ -166,8 +164,7 @@ export async function refresh(req: Request, res: Response) {
     setAuthCookies(res, newAccessToken, newRefreshTokenValue);
 
     return res.status(200).json({
-      accessToken: newAccessToken,
-      refreshToken: newRefreshTokenValue,
+        ok :true
     });
   } catch (error) {
     console.log(error);
@@ -261,6 +258,7 @@ export async function forgotPassword(req : Request, res : Response) {
             const resetToken =  crypto.randomBytes(32).toString("hex");
             const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hr 
 
+            await prisma.passwordResetToken.deleteMany({where : {userId : user.id}})
 
             await prisma.passwordResetToken.create({
                 data : {token : resetToken, userId : user.id, expiresAt}
@@ -271,7 +269,7 @@ export async function forgotPassword(req : Request, res : Response) {
                 from : "onboarding@resend.dev",
                 to : email,
                 subject : " Reset Your DesignReview password",
-                html : `<p> Click to reset your password : <a href="http://localhost:3000/reset-password?token=${resetToken}"> Reset Password </a></p>  <p> This link expires in 1 hour. </p>`
+                html : `<p> Click to reset your password : <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}"> Reset Password </a></p>  <p> This link expires in 1 hour. </p>`
 
             })
           }
@@ -308,7 +306,7 @@ export async function resetPassword( req : Request, res : Response) {
             data : {passwordHash}
         })
   
-        await prisma.passwordResetToken.delete({where : {id : resetToken.id}})
+        await prisma.passwordResetToken.deleteMany({where : {userId : resetToken.userId}})
 
         await prisma.refreshToken.deleteMany({where : {userId : resetToken.userId}})
 

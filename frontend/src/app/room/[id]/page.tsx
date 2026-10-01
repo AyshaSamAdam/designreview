@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { refreshSession } from "@/lib/session";
 import { io, Socket } from "socket.io-client";
 import ReactFlow, {
   Node,
@@ -23,6 +24,7 @@ type Snapshot = { nodes: Node[]; edges: Edge[] };
 
 export default function RoomPage() {
   const params = useParams();
+  const router = useRouter();
   const diagramId = params.id as string;
 
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -32,12 +34,19 @@ export default function RoomPage() {
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
 
+
   useEffect(() => {
-    const newSocket = io("http://localhost:4003", {
-      auth: { token: "Pate ur acces stoken here " },
+
+    let retried = false;
+
+
+    const newSocket = io({
+      withCredentials: true,
     });
 
+   
     newSocket.on("connect", () => {
+       retried = false;
       newSocket.emit("join-room", diagramId);
     });
 
@@ -59,13 +68,29 @@ export default function RoomPage() {
       }
       setEdges(saved.edges ?? []);
     });
+    newSocket.on("connect_error", async (err) => {
+      const expired = err.message === "No token provided" || err.message === "Invalid or expired token"
+      if (!expired || retried) return;
+      retried = true;
+      const renewed = await refreshSession();
+
+      if(renewed) {
+        newSocket.connect();
+      }
+      else {
+         router.push("/sign-in")
+      }
+    });
 
     setSocket(newSocket);
 
     return () => {
       newSocket.disconnect();
     };
-  }, [diagramId]);
+  }, [diagramId, router]);
+
+
+
 
   const saveSnapshot = () => {
     const snapshot: Snapshot = { nodes, edges };
@@ -78,6 +103,8 @@ export default function RoomPage() {
     });
     setFuture([]);
   };
+
+
 
   const undo = () => {
     if (past.length === 0) return;
