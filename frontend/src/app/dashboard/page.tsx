@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { DiagramList } from "@/components/dashboard/diagram-list";
+import { NewDesignButton } from "@/components/dashboard/new-design-button";
 
 export const metadata: Metadata = {
   title: "Dashboard | DesignReview",
@@ -9,10 +11,8 @@ export const metadata: Metadata = {
 export default function DashboardPage() {
   return (
     <DashboardShell>
-      <section className="mt-8">
-        <h2 className="font-display text-lg font-semibold">Your diagrams</h2>
-        <p className="mt-2 text-sm text-ink-dim">Your diagrams will appear here.</p>
-      </section>
+        <NewDesignButton />
+      <DiagramList />
     </DashboardShell>
   );
 }

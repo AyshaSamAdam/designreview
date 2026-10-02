@@ -22,6 +22,48 @@ const initialNodes: Node[] = [
 
 type Snapshot = { nodes: Node[]; edges: Edge[] };
 
+
+
+
+
+const KNOWN_TYPES = ["default", "input", "output", "group"];
+
+function cleanNodes(raw: unknown) {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((node, index) => {
+    const fallback = 80 + index * 40;
+    const x = node?.position?.x ?? node?.x;
+    const y = node?.position?.y ?? node?.y;
+
+    return {
+      ...node,
+      id: String(node?.id ?? `node-${index}`),
+      type: KNOWN_TYPES.includes(node?.type) ? node.type : "default",
+      position: {
+        x: typeof x === "number" ? x : fallback,
+        y: typeof y === "number" ? y : fallback,
+      },
+      data: node?.data ?? { label: node?.label ?? node?.type ?? "Untitled" },
+    };
+  });
+}
+
+
+
+function cleanEdges(raw: unknown) {
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .filter((edge) => edge?.source && edge?.target)
+    .map((edge, index) => ({ ...edge, id: String(edge.id ?? `edge-${index}`) }));
+}
+
+
+
+
+
+
 export default function RoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -63,10 +105,11 @@ export default function RoomPage() {
     });
 
     newSocket.on("room-state", (saved: { nodes: Node[]; edges: Edge[] }) => {
-      if (saved.nodes.length > 0) {
-        setNodes(saved.nodes);
+      const cleaned = cleanNodes(saved.nodes);
+      if (cleaned.length > 0) {
+        setNodes(cleaned);
       }
-      setEdges(saved.edges ?? []);
+      setEdges(cleanEdges(saved.edges));
     });
     newSocket.on("connect_error", async (err) => {
       const expired = err.message === "No token provided" || err.message === "Invalid or expired token"
