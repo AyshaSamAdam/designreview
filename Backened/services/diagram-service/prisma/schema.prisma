@@ -17,7 +17,34 @@ model Diagram {
     isPublic  Boolean @default(false)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    collaborators DiagramCollaborator[]
+    invites DiagramInvite[]
 
     @@index([userId])
 
+}
+
+model DiagramCollaborator {
+  id String @id @default(uuid())
+  diagramId String
+  userId String
+  createdAt DateTime @default(now())
+
+  diagram Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
+
+  @@unique([diagramId, userId])
+  @@index([userId])
+}
+
+  model DiagramInvite {
+  id        String   @id @default(uuid())
+  diagramId String
+  tokenHash String   @unique
+  createdBy String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  diagram Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
+
+  @@index([diagramId])
 }

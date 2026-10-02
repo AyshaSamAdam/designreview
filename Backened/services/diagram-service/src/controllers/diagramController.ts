@@ -3,6 +3,7 @@ import prisma from "../db.js";
 import { authRequest } from "../middleware/authenticate.js";
 import { Prisma } from "@prisma/client";
 import redis from "../redis.js";
+import  crypto from "crypto"
 
 export async function createDiagram(req: authRequest, res: Response) {
 
@@ -260,3 +261,40 @@ export async function getPublicDiagram(req : Request, res : Response) {
 
   
 }
+
+
+const INVITE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+
+export const createInvite = async (req: authRequest, res: Response) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const diagramId = req.params.id as string;
+
+    const diagram = await prisma.diagram.findFirst({
+      where: { id: diagramId, userId: req.userId },
+      select: { id: true },
+    });
+
+    if (!diagram) {
+      return res.status(404).json({ error: "Diagram not found" });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + INVITE_LIFETIME_MS);
+
+    await prisma.diagramInvite.create({
+      data: { diagramId: diagram.id, tokenHash, createdBy: req.userId, expiresAt },
+    });
+
+    return res.status(201).json({ token, expiresAt });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
