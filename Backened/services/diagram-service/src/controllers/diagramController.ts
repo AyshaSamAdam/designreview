@@ -110,6 +110,19 @@ export async function getAllDiagrams(req: authRequest, res: Response) {
 // }
 
 
+async function hasAccess(diagramId : string, ownerId : string, userId : string) {
+
+   if (ownerId === userId) return true;
+
+   const entry  = await prisma.diagramCollaborator.findUnique({
+    where : {diagramId_userId : {diagramId, userId}},
+    select : {id : true}
+   })
+   
+   return entry !== null;
+  
+}
+
 export async function getOneDiagram(req: authRequest, res: Response) {
   const id = req.params.id as string;
   const cacheKey = `diagram:${id}`;
@@ -120,7 +133,7 @@ export async function getOneDiagram(req: authRequest, res: Response) {
     if (cached) {
       const diagram = JSON.parse(cached);
 
-      if (diagram.userId !== req.userId) {
+      if (!(await hasAccess(id, diagram.userId, req.userId as string))) {
         return res.status(403).json({ error: "Forbidden" });
       }
 
@@ -133,7 +146,7 @@ export async function getOneDiagram(req: authRequest, res: Response) {
       return res.status(404).json({ error: "Diagram not found" });
     }
 
-    if (diagram.userId !== req.userId) {
+    if (!(await hasAccess(id, diagram.userId, req.userId as string))) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
@@ -161,7 +174,7 @@ export async function updateDiagram(req: authRequest, res: Response) {
     if (!existing) {
       return res.status(404).json({ error: "Diagram not Found" })
     }
-    if (existing.userId !== req.userId) {
+    if (!(await hasAccess(id, existing.userId, req.userId as string))) {
       return res.status(403).json({ error: "Forbidden" })
     }
 
@@ -291,6 +304,45 @@ export const createInvite = async (req: authRequest, res: Response) => {
     });
 
     return res.status(201).json({ token, expiresAt });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+export const acceptInvite = async (req: authRequest, res: Response) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const token = req.body?.token;
+
+    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+      return res.status(404).json({ error: "Invite not found or expired" });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const invite = await prisma.diagramInvite.findFirst({
+      where: { tokenHash, expiresAt: { gt: new Date() } },
+      select: { diagramId: true, diagram: { select: { userId: true } } },
+    });
+
+    if (!invite) {
+      return res.status(404).json({ error: "Invite not found or expired" });
+    }
+
+    if (invite.diagram.userId !== req.userId) {
+      await prisma.diagramCollaborator.upsert({
+        where: { diagramId_userId: { diagramId: invite.diagramId, userId: req.userId } },
+        create: { diagramId: invite.diagramId, userId: req.userId },
+        update: {},
+      });
+    }
+
+    return res.status(200).json({ diagramId: invite.diagramId });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal server error" });

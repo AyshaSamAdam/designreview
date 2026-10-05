@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { refreshSession } from "@/lib/session";
 import { io, Socket } from "socket.io-client";
+import Link from "next/link"
 import ReactFlow, {
   Node,
   Edge,
@@ -15,6 +16,7 @@ import ReactFlow, {
   EdgeChange,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { ShareButton } from "@/components/room/share-button";
 
 const initialNodes: Node[] = [
   { id: "1", position: { x: 100, y: 100 }, data: { label: "Drag me!" } },
@@ -229,19 +231,49 @@ export default function RoomPage() {
   };
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <p style={{ position: "absolute", zIndex: 10 }}>
-        Currently in room: {presentUsers.join(", ")}
-      </p>
-
-      <div style={{ position: "absolute", top: 40, left: 10, zIndex: 10, display: "flex", gap: 8 }}>
-        <button onClick={undo} disabled={past.length === 0}>Undo</button>
-        <button onClick={redo} disabled={future.length === 0}>Redo</button>
+  <div className="flex h-dvh flex-col bg-void text-ink">
+    <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4 py-2">
+      <div className="flex min-w-0 items-center gap-4">
+        <Link href="/dashboard" className="shrink-0 font-mono text-sm text-ink-dim hover:text-ink">
+          &larr; Dashboard
+        </Link>
+        <p className="truncate text-xs text-ink-dim" title={presentUsers.join(", ")}>
+          {presentUsers.length} in this room
+        </p>
       </div>
 
-      <div style={{ position: "absolute", top: 80, left: 10, zIndex: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={undo}
+          disabled={past.length === 0}
+          className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs hover:bg-elevated disabled:opacity-40"
+        >
+          Undo
+        </button>
+        <button
+          type="button"
+          onClick={redo}
+          disabled={future.length === 0}
+          className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs hover:bg-elevated disabled:opacity-40"
+        >
+          Redo
+        </button>
+        <ShareButton diagramId={diagramId} />
+      </div>
+    </header>
+
+    <div className="relative min-h-0 flex-1">
+      <div className="absolute left-3 top-3 z-10 flex flex-col gap-2">
         {["Service", "Database", "Cache", "Queue", "Load Balancer"].map((type) => (
-          <button key={type} onClick={() => addNode(type)}>{type}</button>
+          <button
+            key={type}
+            type="button"
+            onClick={() => addNode(type)}
+            className="rounded-lg border border-line bg-panel px-3 py-1.5 text-left font-mono text-xs hover:bg-elevated"
+          >
+            {type}
+          </button>
         ))}
       </div>
 
@@ -255,5 +287,6 @@ export default function RoomPage() {
         onNodeDragStart={onNodeDragStart}
       />
     </div>
-  );
+  </div>
+);
 }
