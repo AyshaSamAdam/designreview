@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { takePendingInvite } from "@/lib/pending-invite";
 
 type User = { name: string };
 
@@ -34,7 +35,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         }
 
         const data = await response.json();
-        if (!cancelled) setUser(data.user ?? data);
+        // if (!cancelled) setUser(data.user ?? data);
+        if (cancelled) return;
+
+         const pending = takePendingInvite();
+                if (pending) {
+                router.replace(`/invite/${pending}`);
+                return;
+                }
+
+                setUser(data.user ?? data);
       } catch {
         if (!cancelled) setError("Can't reach the server. Check your connection and try again.");
       }
