@@ -33,6 +33,25 @@ const saveEdges = debounce(async (diagramId: string, edges: any, userId: string)
   }
 }, 2000);
 
+//   HELPER WITHOUT THIS FUNC SOMEONE WITH 2 TABS OPEN WOULD SHOW UP TWICE 
+type Member = { userId: string; name: string };
+
+function membersOf(sockets: { data: any }[]): Member[] {
+  const byUser = new Map<string, Member>();
+
+  for (const s of sockets) {
+    const userId = s.data.userId;
+    if (userId && !byUser.has(userId)) {
+      byUser.set(userId, { userId, name: s.data.name ?? "Someone" });
+    }
+  }
+
+  return [...byUser.values()];
+}
+
+
+
+
 export function registerDiagramHandlers(io: Server, socket: Socket) {
   socket.on("join-room", async (diagramId: string) => {
     try {
@@ -50,10 +69,9 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
         edges: response.data.edges,
       });
 
-      const socketsInRoom = await io.in(diagramId).fetchSockets();
-      const userIds = socketsInRoom.map((s) => s.data.userId);
 
-      io.to(diagramId).emit("presence-update", userIds);
+      const socketsInRoom = await io.in(diagramId).fetchSockets();
+      io.to(diagramId).emit("presence-update", membersOf(socketsInRoom));
     } catch (err) {
       socket.emit("join-error", "You do not have permission to view this diagram");
       console.log(`Socket ${socket.id} was denied access to room ${diagramId}`);
@@ -65,11 +83,9 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
       if (room === socket.id) return;
 
       const socketsInRoom = await io.in(room).fetchSockets();
-      const remainingUserIds = socketsInRoom
-        .filter((s) => s.id !== socket.id)
-        .map((s) => s.data.userId);
-
-      io.to(room).emit("presence-update", remainingUserIds);
+      
+      const remaining = socketsInRoom.filter((s) => s.id !== socket.id);
+      io.to(room).emit("presence-update", membersOf(remaining));
     });
   });
 

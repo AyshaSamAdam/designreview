@@ -349,6 +349,8 @@ export const acceptInvite = async (req: authRequest, res: Response) => {
   }
 };
 
+//  WHICH DIAGRAM DID OTHER PEOPLE INVITE ME TO ?
+
 export async function getSharedDiagrams(req: authRequest, res: Response) {
   if (!req.userId) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -359,6 +361,7 @@ export async function getSharedDiagrams(req: authRequest, res: Response) {
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
   const skip = (page - 1) * limit;
 
+  //  diagrams that have atleast one guest list row with my user Id 
   const where: Prisma.DiagramWhereInput = {
     collaborators: { some: { userId } },
   };

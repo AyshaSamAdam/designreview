@@ -1,12 +1,13 @@
 import { Request, Response } from "express"
 import bcrypt from 'bcrypt'
 import prisma from "../db.js"
-import jwt  from "jsonwebtoken"
+
 import  crypto from "crypto"
 import { authRequest } from "../middleware/autheticate.js"
 import { Resend } from "resend"
 import { googleClient } from "../googleAuth.js"
 import { clearAuthCookies, clearOauthStateCookie, setAuthCookies, setOauthStateCookie } from "../lib/authCookie.js"
+import { signAccessToken } from "../lib/accessToken.js"
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 
@@ -95,7 +96,9 @@ export async function logIn(req : Request, res : Response) {
             data : {failedLoginAttempts : 0, lockedUntil : null}
          })
 
-       const accessToken  = jwt.sign({userId : user.id}, process.env.JWT_SECRET as string, {expiresIn : "15m"})
+    //    const accessToken  = jwt.sign({userId : user.id}, process.env.JWT_SECRET as string, {expiresIn : "15m"})
+         const accessToken = signAccessToken(user)
+
 
         const refreshTokenValue = crypto.randomBytes(40).toString("hex")
         const refreshTokenExpiry = new Date (Date.now() +  7 * 24 * 60 * 60 * 1000);
@@ -125,6 +128,54 @@ export async function logIn(req : Request, res : Response) {
 }
 
 
+// export async function refresh(req: Request, res: Response) {
+//   const refreshToken = req.cookies?.refresh_token ?? req.body?.refreshToken;
+
+//   if (!refreshToken) {
+//     return res.status(401).json({ error: "Refresh token required" });
+//   }
+
+//   try {
+//     const storedToken = await prisma.refreshToken.findUnique({
+//       where: { token: refreshToken },
+//     });
+
+//     if (!storedToken || storedToken.expiresAt < new Date()) {
+//       clearAuthCookies(res);
+//       return res.status(401).json({ error: "Invalid or expired refresh token" });
+//     }
+
+
+//     await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+
+//     const newAccessToken = jwt.sign(
+//       { userId: storedToken.userId },
+//       process.env.JWT_SECRET as string,
+//       { expiresIn: "15m" }
+//     );
+
+//     const newRefreshTokenValue = crypto.randomBytes(40).toString("hex");
+//     const newRefreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+//     await prisma.refreshToken.create({
+//       data: {
+//         token: newRefreshTokenValue,
+//         userId: storedToken.userId,
+//         expiresAt: newRefreshTokenExpiry,
+//       },
+//     });
+
+//     setAuthCookies(res, newAccessToken, newRefreshTokenValue);
+
+//     return res.status(200).json({
+//         ok :true
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json({ error: "Something went wrong" });
+//   }
+// }
+
 export async function refresh(req: Request, res: Response) {
   const refreshToken = req.cookies?.refresh_token ?? req.body?.refreshToken;
 
@@ -142,13 +193,19 @@ export async function refresh(req: Request, res: Response) {
       return res.status(401).json({ error: "Invalid or expired refresh token" });
     }
 
+    const owner = await prisma.user.findUnique({
+      where: { id: storedToken.userId },
+      select: { id: true, name: true },
+    });
+
+    if (!owner) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: "Invalid or expired refresh token" });
+    }
+
     await prisma.refreshToken.delete({ where: { id: storedToken.id } });
 
-    const newAccessToken = jwt.sign(
-      { userId: storedToken.userId },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "15m" }
-    );
+    const newAccessToken = signAccessToken(owner);
 
     const newRefreshTokenValue = crypto.randomBytes(40).toString("hex");
     const newRefreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -163,9 +220,7 @@ export async function refresh(req: Request, res: Response) {
 
     setAuthCookies(res, newAccessToken, newRefreshTokenValue);
 
-    return res.status(200).json({
-        ok :true
-    });
+    return res.status(200).json({ ok: true });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: "Something went wrong" });
@@ -380,7 +435,10 @@ export async function googleCallback(req: Request, res: Response) {
       });
     }
 
-    const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: "15m" });
+    // const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: "15m" });
+
+    const accessToken = signAccessToken(user)
+
 
     const refreshTokenValue = crypto.randomBytes(40).toString("hex");
     const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

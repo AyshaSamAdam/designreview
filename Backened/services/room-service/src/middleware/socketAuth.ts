@@ -14,8 +14,9 @@ export function socketAuth(socket: Socket, next: (err?: Error) => void) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string };
+    const payload = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string; name?: string};
     socket.data.userId = payload.userId;
+    socket.data.name = payload.name?.trim().slice(0, 60) || "Someone"
     next();
   } catch (err) {
     next(new Error("Invalid or expired token"));

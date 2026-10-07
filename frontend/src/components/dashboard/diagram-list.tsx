@@ -26,7 +26,7 @@ type DiagramListProps = {
   emptyText?: string;
 };
 
-const PAGE_SIZE = 2;
+const PAGE_SIZE = 12;
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -34,14 +34,7 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export function DiagramList({
-  title,
-  path,
-  badge,
-  hideWhenEmpty = false,
-  emptyTitle = "No diagrams yet",
-  emptyText = "Your designs will show up here once you create one.",
-}: DiagramListProps) {
+export function DiagramList({title,path,badge,hideWhenEmpty = false,emptyTitle = "No diagrams yet",emptyText = "Your designs will show up here once you create one.",}: DiagramListProps) {
   const router = useRouter();
   const [data, setData] = useState<DiagramsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);

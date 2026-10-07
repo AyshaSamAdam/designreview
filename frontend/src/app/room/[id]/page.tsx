@@ -16,7 +16,12 @@ import ReactFlow, {
   EdgeChange,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { PresenceAvatars, type Member } from "@/components/room/presence-avatars";
 import { ShareButton } from "@/components/room/share-button";
+
+
+
+
 
 const initialNodes: Node[] = [
   { id: "1", position: { x: 100, y: 100 }, data: { label: "Drag me!" } },
@@ -74,7 +79,7 @@ export default function RoomPage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [presentUsers, setPresentUsers] = useState<string[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
 
@@ -102,8 +107,8 @@ export default function RoomPage() {
       setEdges(updatedEdges);
     });
 
-    newSocket.on("presence-update", (userIds: string[]) => {
-      setPresentUsers(userIds);
+    newSocket.on("presence-update", (list: Member[]) => {
+      setMembers(list);
     });
 
     newSocket.on("room-state", (saved: { nodes: Node[]; edges: Edge[] }) => {
@@ -237,9 +242,7 @@ export default function RoomPage() {
         <Link href="/dashboard" className="shrink-0 font-mono text-sm text-ink-dim hover:text-ink">
           &larr; Dashboard
         </Link>
-        <p className="truncate text-xs text-ink-dim" title={presentUsers.join(", ")}>
-          {presentUsers.length} in this room
-        </p>
+        <PresenceAvatars members={members} />
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
