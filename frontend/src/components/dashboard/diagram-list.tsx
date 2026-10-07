@@ -17,7 +17,16 @@ type DiagramsResponse = {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
-const PAGE_SIZE = 12;
+type DiagramListProps = {
+  title: string;
+  path: string;
+  badge?: string;
+  hideWhenEmpty?: boolean;
+  emptyTitle?: string;
+  emptyText?: string;
+};
+
+const PAGE_SIZE = 2;
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -25,19 +34,26 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export function DiagramList() {
+export function DiagramList({
+  title,
+  path,
+  badge,
+  hideWhenEmpty = false,
+  emptyTitle = "No diagrams yet",
+  emptyText = "Your designs will show up here once you create one.",
+}: DiagramListProps) {
   const router = useRouter();
   const [data, setData] = useState<DiagramsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loadingMore , setLoadingMore] = useState(false);
-  const [loadingMoreError, setLoadingMoreError] = useState<string | null> (null)
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const response = await apiFetch(`/diagrams?page=1&limit=${PAGE_SIZE}`);
+        const response = await apiFetch(`${path}?page=1&limit=${PAGE_SIZE}`);
 
         if (response.status === 401) {
           router.push("/sign-in");
@@ -45,7 +61,7 @@ export function DiagramList() {
         }
 
         if (!response.ok) {
-          if (!cancelled) setError("Could not load your diagrams.");
+          if (!cancelled) setError("Could not load these diagrams.");
           return;
         }
 
@@ -61,57 +77,45 @@ export function DiagramList() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [path, router]);
 
+  async function loadMore() {
+    if (!data) return;
 
-async function loadMore() {
-  if (!data) return;
+    setLoadingMore(true);
+    setLoadMoreError(null);
 
-  setLoadingMore(true);
-  setLoadingMoreError(null);
+    try {
+      const nextPage = data.pagination.page + 1;
+      const response = await apiFetch(`${path}?page=${nextPage}&limit=${PAGE_SIZE}`);
 
-  try {
-    const nextPage = data.pagination.page + 1;
-    const response = await apiFetch(`/diagrams?page=${nextPage}&limit=${PAGE_SIZE}`);
+      if (response.status === 401) {
+        router.push("/sign-in");
+        return;
+      }
 
-    if (response.status === 401) {
-      router.push("/sign-in");
-      return;
+      if (!response.ok) throw new Error("load more failed");
+
+      const body: DiagramsResponse = await response.json();
+
+      setData((current) => {
+        if (!current) return body;
+        const seen = new Set(current.diagrams.map((d) => d.id));
+        const fresh = body.diagrams.filter((d) => !seen.has(d.id));
+        return { diagrams: [...current.diagrams, ...fresh], pagination: body.pagination };
+      });
+    } catch {
+      setLoadMoreError("Could not load more diagrams. Please try again.");
+    } finally {
+      setLoadingMore(false);
     }
-
-    if (!response.ok) throw new Error("load more failed");
-
-    const body: DiagramsResponse = await response.json();
-
-    setData((current) => {
-      if (!current) return body;
-      const seen = new Set(current.diagrams.map((d) => d.id));
-      const fresh = body.diagrams.filter((d) => !seen.has(d.id));
-      return { diagrams: [...current.diagrams, ...fresh], pagination: body.pagination };
-    });
-  } catch {
-    setLoadingMoreError("Could not load more diagrams. Please try again.");
-  } finally {
-    setLoadingMore(false);
   }
-}
-
-
-
-
-
-
-
-
-
-
-
-
 
   if (error) {
     return (
       <section className="mt-8">
-        <p role="alert" className="rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">
+        <h2 className="font-display text-lg font-semibold">{title}</h2>
+        <p role="alert" className="mt-4 rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">
           {error}
         </p>
         <button
@@ -126,11 +130,13 @@ async function loadMore() {
   }
 
   if (!data) {
+    if (hideWhenEmpty) return null;
+
     return (
       <section className="mt-8" aria-busy="true">
-        <h2 className="font-display text-lg font-semibold">Your diagrams</h2>
+        <h2 className="font-display text-lg font-semibold">{title}</h2>
         <div role="status" className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <span className="sr-only">Loading your diagrams</span>
+          <span className="sr-only">Loading {title}</span>
           {Array.from({ length: 3 }, (_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl border border-line bg-panel" />
           ))}
@@ -140,14 +146,14 @@ async function loadMore() {
   }
 
   if (data.diagrams.length === 0) {
+    if (hideWhenEmpty) return null;
+
     return (
       <section className="mt-8">
-        <h2 className="font-display text-lg font-semibold">Your diagrams</h2>
+        <h2 className="font-display text-lg font-semibold">{title}</h2>
         <div className="mt-4 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-          <p className="font-display text-lg font-semibold">No diagrams yet</p>
-          <p className="mt-2 text-sm text-ink-dim">
-            Your designs will show up here once you create one.
-          </p>
+          <p className="font-display text-lg font-semibold">{emptyTitle}</p>
+          <p className="mt-2 text-sm text-ink-dim">{emptyText}</p>
         </div>
       </section>
     );
@@ -155,7 +161,7 @@ async function loadMore() {
 
   return (
     <section className="mt-8">
-      <h2 className="font-display text-lg font-semibold">Your diagrams</h2>
+      <h2 className="font-display text-lg font-semibold">{title}</h2>
       <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.diagrams.map((diagram) => (
           <li key={diagram.id}>
@@ -165,11 +171,18 @@ async function loadMore() {
             >
               <div className="flex items-start justify-between gap-3">
                 <h3 className="truncate font-display text-base font-semibold">{diagram.title}</h3>
-                {diagram.isPublic && (
-                  <span className="shrink-0 rounded-md border border-line px-2 py-0.5 font-mono text-xs text-ink-dim">
-                    PUBLIC
-                  </span>
-                )}
+                <div className="flex shrink-0 gap-2">
+                  {badge && (
+                    <span className="rounded-md border border-line px-2 py-0.5 font-mono text-xs text-ink-dim">
+                      {badge}
+                    </span>
+                  )}
+                  {diagram.isPublic && (
+                    <span className="rounded-md border border-line px-2 py-0.5 font-mono text-xs text-ink-dim">
+                      PUBLIC
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="mt-3 text-sm text-ink-dim">
                 Edited {dateFormat.format(new Date(diagram.updatedAt))}
@@ -178,27 +191,28 @@ async function loadMore() {
           </li>
         ))}
       </ul>
-      
-{data.pagination.page < data.pagination.totalPages && (
-  <div className="mt-6 flex items-center gap-4">
-    <button
-      type="button"
-      onClick={loadMore}
-      disabled={loadingMore}
-      className="rounded-lg border border-line px-4 py-2 font-mono text-sm transition-colors hover:bg-elevated disabled:opacity-60"
-    >
-      {loadingMore ? "Loading..." : "Load more"}
-    </button>
-    <p className="text-sm text-ink-faint">
-      Showing {data.diagrams.length} of {data.pagination.total}
-    </p>
-  </div>
-)}
-{loadingMoreError&& (
-  <p role="alert" className="mt-4 rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">
-    {loadingMoreError}
-  </p>
-)}
+
+      {data.pagination.page < data.pagination.totalPages && (
+        <div className="mt-6 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="rounded-lg border border-line px-4 py-2 font-mono text-sm transition-colors hover:bg-elevated disabled:opacity-60"
+          >
+            {loadingMore ? "Loading..." : "Load more"}
+          </button>
+          <p className="text-sm text-ink-faint">
+            Showing {data.diagrams.length} of {data.pagination.total}
+          </p>
+        </div>
+      )}
+
+      {loadMoreError && (
+        <p role="alert" className="mt-4 rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">
+          {loadMoreError}
+        </p>
+      )}
     </section>
   );
 }

@@ -349,4 +349,38 @@ export const acceptInvite = async (req: authRequest, res: Response) => {
   }
 };
 
+export async function getSharedDiagrams(req: authRequest, res: Response) {
+  if (!req.userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
+  const userId = req.userId;
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.DiagramWhereInput = {
+    collaborators: { some: { userId } },
+  };
+
+  try {
+    const [diagrams, total] = await Promise.all([
+      prisma.diagram.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        take: limit,
+        skip,
+        select: { id: true, title: true, isPublic: true, createdAt: true, updatedAt: true },
+      }),
+      prisma.diagram.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      diagrams,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Something Went Wrong" });
+  }
+}

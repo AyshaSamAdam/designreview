@@ -12,7 +12,8 @@ export default function DashboardPage() {
   return (
     <DashboardShell>
         <NewDesignButton />
-      <DiagramList />
+      <DiagramList   title="Your diagrams"  path="/diagrams"/>
+      <DiagramList   title="Shared with me"  path="/diagrams/shared" badge="SHARED"  hideWhenEmpty  />
     </DashboardShell>
   );
 }
