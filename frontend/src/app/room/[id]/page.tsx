@@ -18,6 +18,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { PresenceAvatars, type Member } from "@/components/room/presence-avatars";
 import { ShareButton } from "@/components/room/share-button";
+import { PromptPanel } from "@/components/room/prompt-panel";
 
 
 
@@ -236,7 +237,7 @@ export default function RoomPage() {
   };
 
   return (
-  <div className="flex h-dvh flex-col bg-void text-ink">
+              <div className="flex h-dvh flex-col bg-void text-ink">
     <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4 py-2">
       <div className="flex min-w-0 items-center gap-4">
         <Link href="/dashboard" className="shrink-0 font-mono text-sm text-ink-dim hover:text-ink">
@@ -266,30 +267,37 @@ export default function RoomPage() {
       </div>
     </header>
 
-    <div className="relative min-h-0 flex-1">
-      <div className="absolute left-3 top-3 z-10 flex flex-col gap-2">
+    <div className="relative flex min-h-0 flex-1">
+      <div className="flex w-36 shrink-0 flex-col gap-2 border-r border-line bg-panel p-3">
+        <p className="font-mono text-xs uppercase text-ink-dim">Add a box</p>
         {["Service", "Database", "Cache", "Queue", "Load Balancer"].map((type) => (
           <button
             key={type}
             type="button"
             onClick={() => addNode(type)}
-            className="rounded-lg border border-line bg-panel px-3 py-1.5 text-left font-mono text-xs hover:bg-elevated"
+            className="rounded-lg border border-line bg-void px-3 py-1.5 text-left font-mono text-xs hover:bg-elevated"
           >
             {type}
           </button>
         ))}
       </div>
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeDoubleClick={onNodeDoubleClick}
-        onNodeDragStart={onNodeDragStart}
-      />
+      <div className="h-full min-w-0 flex-1">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onNodeDragStart={onNodeDragStart}
+        />
+      </div>
+
+      <PromptPanel diagramId={diagramId} />
     </div>
   </div>
 );
 }
+
+

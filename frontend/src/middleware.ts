@@ -24,3 +24,4 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/dashboard/:path*", "/room/:path*", "/admin/:path*", "/prompts/:path*"],
 };
+
