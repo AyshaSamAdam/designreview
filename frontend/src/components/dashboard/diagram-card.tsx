@@ -10,6 +10,7 @@ export type DiagramSummary = {
   title: string;
   isPublic: boolean;
   updatedAt: string;
+  prompt?: {title : string; difficulty : "easy" | "medium" | "hard"} | null;
 };
 
 type DiagramCardProps = {
@@ -30,6 +31,16 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
 
 const smallButton =
   "rounded-md border border-line px-2.5 py-1 font-mono text-xs transition-colors hover:bg-elevated disabled:opacity-60";
+
+
+const difficultyColor = {
+    easy : "text-good",
+    medium : "text-warn",
+    hard : "text-bad"
+}
+
+
+
 
 export function DiagramCard({ diagram, badge, editable = false, onRenamed, onDeleted }: DiagramCardProps) {
   const router = useRouter();
@@ -172,6 +183,11 @@ export function DiagramCard({ diagram, badge, editable = false, onRenamed, onDel
             </Link>
           </h3>
           <div className="flex shrink-0 gap-2">
+            {diagram.prompt && (
+                <span className={`rounded-md border border-line px-2 py-0.5 font-mono text-xs uppercase ${difficultyColor[diagram.prompt.difficulty]}`}>
+                    {diagram.prompt.difficulty}
+                </span>
+            )}
             {badge && (
               <span className="rounded-md border border-line px-2 py-0.5 font-mono text-xs text-ink-dim">
                 {badge}
@@ -185,6 +201,12 @@ export function DiagramCard({ diagram, badge, editable = false, onRenamed, onDel
           </div>
         </div>
       )}
+
+      {
+        diagram.prompt && (
+            <p className="mt-2 truncate text-xs text-ink-dim"> Question : {diagram.prompt.title}</p>
+        )
+      }
 
       <p className="mt-3 text-sm text-ink-dim">
         Edited {dateFormat.format(new Date(diagram.updatedAt))}

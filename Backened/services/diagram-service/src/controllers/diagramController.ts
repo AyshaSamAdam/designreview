@@ -6,7 +6,14 @@ import redis from "../redis.js";
 import  crypto from "crypto"
 import { prompts } from "../data/prompts.js";
 
+function withPromptInfo<T extends { promptId: string | null }>(diagram: T) {
+  const found = diagram.promptId ? prompts.find((p) => p.id === diagram.promptId) : undefined;
 
+  return {
+    ...diagram,
+    prompt: found ? { title: found.title, difficulty: found.difficulty } : null,
+  };
+}
 
 export async function createDiagram(req: authRequest, res: Response) {
 
@@ -50,14 +57,14 @@ export async function getAllDiagrams(req: authRequest, res: Response) {
         where: { userId: req.userId },
         orderBy: { updatedAt: "desc" },
         take: limit,
-        select: {id : true, title : true, isPublic: true, createdAt : true, updatedAt : true},
+        select: {id : true, title : true, isPublic: true, createdAt : true, updatedAt : true, promptId: true},
         skip: skip,
       }),
       prisma.diagram.count({ where: { userId: req.userId } })
     ])
 
     return res.status(200).json({
-      diagrams,
+      diagrams : diagrams.map(withPromptInfo),
       pagination: {
         page,
         limit,
@@ -383,13 +390,13 @@ export async function getSharedDiagrams(req: authRequest, res: Response) {
         orderBy: { updatedAt: "desc" },
         take: limit,
         skip,
-        select: { id: true, title: true, isPublic: true, createdAt: true, updatedAt: true },
+        select: { id: true, title: true, isPublic: true, createdAt: true, updatedAt: true, promptId : true },
       }),
       prisma.diagram.count({ where }),
     ]);
 
     return res.status(200).json({
-      diagrams,
+      diagrams : diagrams.map(withPromptInfo),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
