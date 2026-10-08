@@ -1,5 +1,5 @@
 import { Router } from "express"
-import {acceptInvite, createDiagram, createInvite, getAllDiagrams, getOneDiagram, getPublicDiagram, getSharedDiagrams, togglePublic, updateDiagram} from "../controllers/diagramController.js"
+import {acceptInvite, createDiagram, createInvite, deleteDiagram, getAllDiagrams, getOneDiagram, getPublicDiagram, getSharedDiagrams, togglePublic, updateDiagram} from "../controllers/diagramController.js"
 import { validateDiagram, validateDiagramUpdate } from "../middleware/validateDiagram.js"
 import { authenticate } from "../middleware/authenticate.js"
 
@@ -16,6 +16,7 @@ router.patch("/:id" , authenticate, validateDiagramUpdate,  updateDiagram)  // u
 router.get("/public/:id", getPublicDiagram)
 router.patch("/:id/publish", authenticate, togglePublic)      // LET THE USER MAKE THEIR DIAGRAM PUBLIC THROUGH THIS ROUTE               
 router.post("/:id/invites", authenticate, createInvite)
+router.delete("/:id" ,authenticate, deleteDiagram)
 router.post("/invites/accept" ,authenticate, acceptInvite)
 
 export default router;

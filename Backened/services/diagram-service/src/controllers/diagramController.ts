@@ -4,10 +4,17 @@ import { authRequest } from "../middleware/authenticate.js";
 import { Prisma } from "@prisma/client";
 import redis from "../redis.js";
 import  crypto from "crypto"
+import { prompts } from "../data/prompts.js";
+
+
 
 export async function createDiagram(req: authRequest, res: Response) {
 
-  const { title, nodes, edges } = req.body
+  const { title, nodes, edges, promptId } = req.body
+
+  if (promptId !== undefined && !prompts.some((p) => p.id === promptId)) {
+    return res.status(400).json({ error: "Unknown prompt" })
+  }
 
   try {
     const diagram = await prisma.diagram.create({
@@ -15,24 +22,20 @@ export async function createDiagram(req: authRequest, res: Response) {
         title,
         nodes,
         edges,
+        promptId,
         userId: req.userId as string,
-
       }
     })
-
 
     return res.status(201).json({
       diagram
     })
-
   }
   catch (err) {
     console.log(err)
     return res.status(500).json({ error: "Something Went Wrong " })
-
   }
 }
-
 
 export async function getAllDiagrams(req: authRequest, res: Response) {
   // Pagination 
@@ -176,6 +179,13 @@ export async function updateDiagram(req: authRequest, res: Response) {
     }
     if (!(await hasAccess(id, existing.userId, req.userId as string))) {
       return res.status(403).json({ error: "Forbidden" })
+    }
+
+
+    if (title !== undefined && existing.userId !== req.userId) {
+      return res.status(403).json({
+        error : "Only the owner can rename a diagram"
+      })
     }
 
     const updated = await prisma.diagram.update({
@@ -382,6 +392,35 @@ export async function getSharedDiagrams(req: authRequest, res: Response) {
       diagrams,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Something Went Wrong" });
+  }
+}
+
+
+export async function deleteDiagram(req: authRequest, res: Response) {
+  const id = req.params.id as string;
+
+  try {
+    const diagram = await prisma.diagram.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!diagram) {
+      return res.status(404).json({ error: "Diagram not found" });
+    }
+
+    if (diagram.userId !== req.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+//     DELETING THE DIAGRAM AUTOMATICAALY DELTES THE GUEST LIST AND INVITES BCZ WE MARKED THOSE TABLES ONDELETE : CASCADE EARLIER NO NEE DTO WRITE EXTRA CODE FOR THAT   
+    await prisma.diagram.delete({ where: { id } });
+    await redis.del(`diagram:${id}`);
+
+    //  204 MEANS DONE NOTHING TO SEND BACK 
+    return res.status(204).send();
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: "Something Went Wrong" });

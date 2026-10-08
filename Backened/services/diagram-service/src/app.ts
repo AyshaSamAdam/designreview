@@ -1,5 +1,6 @@
 import express from "express"
 import diagramRoutes from "./routes/diagramRoutes.js"
+import promptsRoutes from "./routes/promptRoutes.js"
 import helmet from "helmet"
 import cors from "cors"
 import cookieParser from "cookie-parser"
@@ -19,7 +20,7 @@ app.use(cookieParser())
 
 
 app.use("/diagrams", diagramRoutes)
-
+app.use("/prompts", promptsRoutes)
 
 
 

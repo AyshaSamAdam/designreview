@@ -1,12 +1,12 @@
 import { z } from "zod"
 import {Request, Response, NextFunction} from "express"
-import { futimes } from "node:fs"
 
 
 const diagramSchema = z.object({
-    title : z.string().min(1),
+    title : z.string().trim().min(1).max(100),
     nodes : z.array(z.any()),
-    edges : z.array(z.any())
+    edges : z.array(z.any()),
+    promptId : z.string().max(100).optional()
 })
 
 
@@ -27,7 +27,7 @@ export function validateDiagram(req : Request, res : Response, next : NextFuncti
 }
 
 
-const updateDiagramSchema = diagramSchema.partial();
+const updateDiagramSchema = diagramSchema.omit({promptId : true}).partial();
 
 export function validateDiagramUpdate (req : Request, res : Response, next : NextFunction) {
     const result = updateDiagramSchema.safeParse(req.body);
