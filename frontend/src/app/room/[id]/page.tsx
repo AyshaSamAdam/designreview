@@ -83,6 +83,7 @@ export default function RoomPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
+  const [selectedId , setSelectedId] = useState<string | null>(null)
 
 
   useEffect(() => {
@@ -224,17 +225,25 @@ export default function RoomPage() {
     socket?.emit("node-update", { diagramId, nodes: updated });
   };
 
-  const onNodeDoubleClick = (_event: unknown, node: Node) => {
-    const newLabel = window.prompt("Name this box:", node.data.label);
-    if (!newLabel) return;
 
-    saveSnapshot();
-    const updated = nodes.map((n) =>
-      n.id === node.id ? { ...n, data: { ...n.data, label: newLabel } } : n
-    );
-    setNodes(updated);
-    socket?.emit("node-update", { diagramId, nodes: updated });
-  };
+  const updateSelectedData = (patch: { label?: string; note?: string }) => {
+  if (!selectedId) return;
+  const updated = nodes.map((n) =>
+    n.id === selectedId ? { ...n, data: { ...n.data, ...patch } } : n
+  );
+  setNodes(updated);
+  socket?.emit("node-update", { diagramId, nodes: updated });
+};
+
+  const onNodeClick = (_event : unknown, node : Node) => setSelectedId(node.id)
+  const onPaneClick = () => setSelectedId(null);
+
+
+    const selectedNode = nodes.find((n) =>  n.id === selectedId) ?? null;
+
+
+
+
 
   return (
               <div className="flex h-dvh flex-col bg-void text-ink">
@@ -282,16 +291,43 @@ export default function RoomPage() {
         ))}
       </div>
 
-      <div className="h-full min-w-0 flex-1">
+      <div className="relative h-full min-w-0 flex-1">
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeDoubleClick={onNodeDoubleClick}
           onNodeDragStart={onNodeDragStart}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
         />
+
+      {selectedNode && (
+  <div className="absolute bottom-4 left-1/2 z-10 w-80 -translate-x-1/2 rounded-xl border border-line bg-panel p-3">
+    <p className="font-mono text-xs uppercase text-ink-dim">Selected box</p>
+    <input
+      value={String(selectedNode.data.label ?? "")}
+      maxLength={60}
+      onFocus={saveSnapshot}
+      onChange={(e) => updateSelectedData({ label: e.target.value })}
+      className="mt-2 w-full rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+    />
+    <p className="mt-3 font-mono text-xs uppercase text-ink-dim">Why this box?</p>
+    <textarea
+      value={String(selectedNode.data.note ?? "")}
+      maxLength={300}
+      rows={3}
+      onFocus={saveSnapshot}
+      onChange={(e) => updateSelectedData({ note: e.target.value })}
+      placeholder="Write why you added this box"
+      className="mt-1 w-full resize-none rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+    />
+    <p className="mt-1 text-right font-mono text-xs text-ink-dim">
+      {String(selectedNode.data.note ?? "").length} / 300
+    </p>
+  </div>
+)}
       </div>
 
       <PromptPanel diagramId={diagramId} />
