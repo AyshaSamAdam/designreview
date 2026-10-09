@@ -172,7 +172,7 @@ export async function getOneDiagram(req: authRequest, res: Response) {
 export async function updateDiagram(req: authRequest, res: Response) {
 
   const id = req.params.id as string;
-  const { title, nodes, edges } = req.body;
+  const { title, nodes, edges , notes} = req.body;
 
 
   try {
@@ -200,7 +200,8 @@ export async function updateDiagram(req: authRequest, res: Response) {
       data: {
         title,
         nodes,
-        edges
+        edges,
+        notes
       }
     })
 

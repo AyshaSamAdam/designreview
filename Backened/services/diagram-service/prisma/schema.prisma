@@ -20,6 +20,7 @@ model Diagram {
     updatedAt DateTime @updatedAt
     collaborators DiagramCollaborator[]
     invites DiagramInvite[]
+    notes String @default("")
     
 
     @@index([userId])

@@ -6,7 +6,8 @@ const diagramSchema = z.object({
     title : z.string().trim().min(1).max(100),
     nodes : z.array(z.any()),
     edges : z.array(z.any()),
-    promptId : z.string().max(100).optional()
+    promptId : z.string().max(100).optional(),
+    notes : z.string().max(5000).optional()
 })
 
 
