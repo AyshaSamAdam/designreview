@@ -225,7 +225,6 @@ export default function RoomPage() {
     socket?.emit("node-update", { diagramId, nodes: updated });
   };
 
-
   const updateSelectedData = (patch: { label?: string; note?: string }) => {
   if (!selectedId) return;
   const updated = nodes.map((n) =>
