@@ -7,3 +7,4 @@ dist/
 .agents/
 .windsurf/
 src/generated
+**/.env
