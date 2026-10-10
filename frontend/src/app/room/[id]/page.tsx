@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { refreshSession } from "@/lib/session";
 import { io, Socket } from "socket.io-client";
+import { BoxNode } from "@/components/room/box-node";
 import Link from "next/link"
 import ReactFlow, {
   Node,
@@ -19,6 +20,7 @@ import "reactflow/dist/style.css";
 import { PresenceAvatars, type Member } from "@/components/room/presence-avatars";
 import { ShareButton } from "@/components/room/share-button";
 import { PromptPanel } from "@/components/room/prompt-panel";
+import { NotesBar } from "@/components/room/notes-bar";
 
 
 
@@ -67,6 +69,8 @@ function cleanEdges(raw: unknown) {
     .map((edge, index) => ({ ...edge, id: String(edge.id ?? `edge-${index}`) }));
 }
 
+
+const nodeTypes = {default : BoxNode}
 
 
 
@@ -289,44 +293,48 @@ export default function RoomPage() {
           </button>
         ))}
       </div>
+<div className="flex h-full min-w-0 flex-1 flex-col">
+        <div className="relative min-h-0 flex-1">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeDragStart={onNodeDragStart}
+            onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
+            nodeTypes={nodeTypes}
+          />
 
-      <div className="relative h-full min-w-0 flex-1">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeDragStart={onNodeDragStart}
-          onNodeClick={onNodeClick}
-          onPaneClick={onPaneClick}
-        />
+          {selectedNode && (
+            <div className="absolute bottom-4 left-1/2 z-10 w-80 -translate-x-1/2 rounded-xl border border-line bg-panel p-3">
+              <p className="font-mono text-xs uppercase text-ink-dim">Selected box</p>
+              <input
+                value={String(selectedNode.data.label ?? "")}
+                maxLength={60}
+                onFocus={saveSnapshot}
+                onChange={(e) => updateSelectedData({ label: e.target.value })}
+                className="mt-2 w-full rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+              />
+              <p className="mt-3 font-mono text-xs uppercase text-ink-dim">Why this box?</p>
+              <textarea
+                value={String(selectedNode.data.note ?? "")}
+                maxLength={300}
+                rows={3}
+                onFocus={saveSnapshot}
+                onChange={(e) => updateSelectedData({ note: e.target.value })}
+                placeholder="Write why you added this box"
+                className="mt-1 w-full resize-none rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+              />
+              <p className="mt-1 text-right font-mono text-xs text-ink-dim">
+                {String(selectedNode.data.note ?? "").length} / 300
+              </p>
+            </div>
+          )}
+        </div>
 
-      {selectedNode && (
-  <div className="absolute bottom-4 left-1/2 z-10 w-80 -translate-x-1/2 rounded-xl border border-line bg-panel p-3">
-    <p className="font-mono text-xs uppercase text-ink-dim">Selected box</p>
-    <input
-      value={String(selectedNode.data.label ?? "")}
-      maxLength={60}
-      onFocus={saveSnapshot}
-      onChange={(e) => updateSelectedData({ label: e.target.value })}
-      className="mt-2 w-full rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
-    />
-    <p className="mt-3 font-mono text-xs uppercase text-ink-dim">Why this box?</p>
-    <textarea
-      value={String(selectedNode.data.note ?? "")}
-      maxLength={300}
-      rows={3}
-      onFocus={saveSnapshot}
-      onChange={(e) => updateSelectedData({ note: e.target.value })}
-      placeholder="Write why you added this box"
-      className="mt-1 w-full resize-none rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
-    />
-    <p className="mt-1 text-right font-mono text-xs text-ink-dim">
-      {String(selectedNode.data.note ?? "").length} / 300
-    </p>
-  </div>
-)}
+        <NotesBar diagramId={diagramId} socket={socket} />
       </div>
 
       <PromptPanel diagramId={diagramId} />

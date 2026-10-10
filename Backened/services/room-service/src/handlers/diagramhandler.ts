@@ -108,4 +108,23 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
     socket.to(data.diagramId).emit("edge-update", data.edges);
     saveEdges(data.diagramId, data.edges, socket.data.userId);
   });
+
+
+  socket.on("notes-update", (data: { diagramId: string; notes: string }) => {
+    if (!socket.rooms.has(data.diagramId)) {
+      console.log(`Socket ${socket.id} tried to update notes in room ${data.diagramId} without joining it`);
+      return;
+    }
+
+    if (typeof data.notes !== "string" || data.notes.length > 5000) {
+      console.log(`Socket ${socket.id} sent invalid notes`);
+      return;
+    }
+        // data.diagramId is the room so socket.to(room).emit(notes are updated guyzzz )
+    socket.to(data.diagramId).emit("notes-update", data.notes);
+  });
+
+
+
+
 }
