@@ -217,12 +217,12 @@ export default function RoomPage() {
     socket?.emit("edge-update", { diagramId, edges: updated });
   };
 
-  const addNode = (label: string) => {
+  const addNode = (label: string, kind : string) => {
     saveSnapshot();
     const newNode: Node = {
       id: crypto.randomUUID(),
       position: { x: 100 + nodes.length * 30, y: 100 + nodes.length * 30 },
-      data: { label },
+      data: { label , kind},
     };
     const updated = [...nodes, newNode];
     setNodes(updated);
@@ -282,14 +282,20 @@ export default function RoomPage() {
     <div className="relative flex min-h-0 flex-1">
       <div className="flex w-36 shrink-0 flex-col gap-2 border-r border-line bg-panel p-3">
         <p className="font-mono text-xs uppercase text-ink-dim">Add a box</p>
-        {["Service", "Database", "Cache", "Queue", "Load Balancer"].map((type) => (
+       {[
+          { label: "Service", kind: "service" },
+          { label: "Database", kind: "database" },
+          { label: "Cache", kind: "cache" },
+          { label: "Queue", kind: "queue" },
+          { label: "Load Balancer", kind: "load_balancer" },
+        ].map((item) => (
           <button
-            key={type}
+            key={item.kind}
             type="button"
-            onClick={() => addNode(type)}
+            onClick={() => addNode(item.label, item.kind)}
             className="rounded-lg border border-line bg-void px-3 py-1.5 text-left font-mono text-xs hover:bg-elevated"
           >
-            {type}
+            {item.label}
           </button>
         ))}
       </div>
