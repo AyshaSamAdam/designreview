@@ -1,3 +1,6 @@
+
+// MAIN PURPOSE OF THIS FILE IS TO LOAD THE DATA FILE AND CHECK IF ITS VALID AND EXPORT IT AS LIBrary 
+
 import { readFileSync } from "node:fs" // is  a tool  that reads a  file from your hard drive 'SYNC" mean the program wiats until the whole file is read before moving on 
 import { z } from "zod"
 
