@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { refreshSession } from "@/lib/session";
 import { io, Socket } from "socket.io-client";
 import { BoxNode } from "@/components/room/box-node";
+import { apiFetch } from "@/lib/api";
 import Link from "next/link"
 import ReactFlow, {
   Node,
@@ -19,9 +20,9 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { PresenceAvatars, type Member } from "@/components/room/presence-avatars";
 import { ShareButton } from "@/components/room/share-button";
-import { PromptPanel } from "@/components/room/prompt-panel";
+import { RightPanel, type PanelTab } from "@/components/room/right-panel";
 import { NotesBar } from "@/components/room/notes-bar";
-
+import { ReviewBar } from "@/components/room/review-bar";
 
 
 
@@ -88,9 +89,14 @@ export default function RoomPage() {
   const [past, setPast] = useState<Snapshot[]>([]);
   const [future, setFuture] = useState<Snapshot[]>([]);
   const [selectedId , setSelectedId] = useState<string | null>(null)
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelTab, setPanelTab] = useState<PanelTab>("problem")
+  const [reviewStarted, setReviewStarted] = useState(false)
+  const [userName , setUserName]  = useState<string | undefined>(undefined)
 
 
   useEffect(() => {
+       setPanelOpen(window.matchMedia("(min-width: 768px)").matches);
 
     let retried = false;
 
@@ -144,6 +150,29 @@ export default function RoomPage() {
       newSocket.disconnect();
     };
   }, [diagramId, router]);
+
+
+
+  // Ask the server who is logged in, so the chat can show your initial.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/auth/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        const name = (data.user ?? data)?.name;
+        if (!cancelled && typeof name === "string") setUserName(name);
+      } catch {
+        // If this fails, the chat just shows "Y". Nothing else breaks.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
 
 
 
@@ -244,9 +273,21 @@ export default function RoomPage() {
 
     const selectedNode = nodes.find((n) =>  n.id === selectedId) ?? null;
 
+    const boxCount = nodes.filter((n) => typeof n.data?.kind === "string").length;
+
+    const startReview = () => {
+      setPanelOpen(true)
+      setPanelTab("interview")
+      setReviewStarted(true)
+    }
+    const endReview = () => setReviewStarted(false)
 
 
+    const resumeReview = () => {
+      setPanelTab("interview")
+      setReviewStarted(true)
 
+    }
 
   return (
               <div className="flex h-dvh flex-col bg-void text-ink">
@@ -313,6 +354,8 @@ export default function RoomPage() {
             nodeTypes={nodeTypes}
           />
 
+          <ReviewBar boxCount={boxCount} edgeCount={edges.length} started={reviewStarted} onStart={startReview}  />
+
           {selectedNode && (
             <div className="absolute bottom-4 left-1/2 z-10 w-80 -translate-x-1/2 rounded-xl border border-line bg-panel p-3">
               <p className="font-mono text-xs uppercase text-ink-dim">Selected box</p>
@@ -343,7 +386,22 @@ export default function RoomPage() {
         <NotesBar diagramId={diagramId} socket={socket} />
       </div>
 
-      <PromptPanel diagramId={diagramId} />
+      <RightPanel 
+      diagramId={diagramId} 
+      open={panelOpen} 
+      onOpenChange={setPanelOpen}
+      tab={panelTab}
+      onTabChange={setPanelTab}
+      nodes={nodes}
+      edges={edges}
+      selectedId={selectedId}
+      started={reviewStarted}
+      boxCount={boxCount}
+      onStart={startReview}
+      onEnd={endReview}
+      onResume={resumeReview}
+      userName={userName}
+      />
     </div>
   </div>
 );

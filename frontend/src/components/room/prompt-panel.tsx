@@ -34,10 +34,10 @@ function Section({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export function PromptPanel({ diagramId }: { diagramId: string }) {
+export function PromptBody({ diagramId }: { diagramId: string }) {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [missing, setMissing] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,13 +60,11 @@ export function PromptPanel({ diagramId }: { diagramId: string }) {
         if (!promptResponse.ok) return;
 
         const found: Prompt = await promptResponse.json();
-
-        if (!cancelled) {
-          setOpen(window.matchMedia("(min-width: 768px)").matches);
-          setPrompt(found);
-        }
+        if (!cancelled) setPrompt(found);
       } catch {
         // The panel is a helper. If it fails, the room still works, so stay quiet.
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     }
 
@@ -78,57 +76,27 @@ export function PromptPanel({ diagramId }: { diagramId: string }) {
   }, [diagramId]);
 
   if (missing) {
-    return (
-      <aside className="hidden w-80 shrink-0 border-l border-line bg-panel p-4 text-sm text-ink-dim md:block">
-        This question is no longer available.
-      </aside>
-    );
+    return <p className="p-4 text-sm text-ink-dim">This question is no longer available.</p>;
   }
 
-  if (!prompt) return null;
-
-  if (!open) {
+  if (!prompt) {
     return (
-      <aside className="flex w-10 shrink-0 flex-col items-center border-l border-line bg-panel py-3">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Show question"
-          className="font-mono text-xs text-ink-dim hover:text-ink [writing-mode:vertical-rl]"
-        >
-          Show question
-        </button>
-      </aside>
+      <p className="p-4 text-sm text-ink-dim">
+        {loaded ? "No problem statement for this design." : "Loading..."}
+      </p>
     );
   }
 
   return (
-    <aside
-      aria-label="Interview question"
-      className="absolute inset-y-0 right-0 z-20 flex w-80 max-w-full flex-col border-l border-line bg-panel shadow-lg md:static md:z-auto md:shrink-0 md:shadow-none"
-    >
-      <div className="flex items-start justify-between gap-3 border-b border-line p-4">
-        <div className="min-w-0">
-          <p className={`font-mono text-xs uppercase ${difficultyColor[prompt.difficulty]}`}>
-            {prompt.difficulty}
-          </p>
-          <h2 className="mt-1 font-display text-base font-semibold">{prompt.title}</h2>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="shrink-0 rounded-md border border-line px-2.5 py-1 font-mono text-xs hover:bg-elevated"
-        >
-          Hide
-        </button>
-      </div>
-
-      <div className="overflow-y-auto p-4">
-        <p className="text-sm text-ink-dim">{prompt.summary}</p>
-        <Section title="What it must do" items={prompt.functionalRequirements} />
-        <Section title="How well it must do it" items={prompt.nonFunctionalRequirements} />
-        <Section title="Scale" items={prompt.scaleHints} />
-      </div>
-    </aside>
+    <div className="p-4">
+      <p className={`font-mono text-xs uppercase ${difficultyColor[prompt.difficulty]}`}>
+        {prompt.difficulty}
+      </p>
+      <h2 className="mt-1 font-display text-base font-semibold">{prompt.title}</h2>
+      <p className="mt-3 text-sm text-ink-dim">{prompt.summary}</p>
+      <Section title="What it must do" items={prompt.functionalRequirements} />
+      <Section title="How well it must do it" items={prompt.nonFunctionalRequirements} />
+      <Section title="Scale" items={prompt.scaleHints} />
+    </div>
   );
 }

@@ -1,24 +1,54 @@
-import { Router } from "express"
+import { Router, type Request, type Response, type NextFunction } from "express"
 import { z } from "zod"
+import prisma from "../db.js"
 import { diagramInputSchema, buildGraph, findFacts, neighboursOf } from "../graph.js"
 import { pickScenario } from "../pickScenario.js"
 import { askInterviewer } from "../interviewer.js"
+import { findScenario } from "../scenarios.js"
+import { reviewAnswer } from "../grader.js"
+import { userContext } from "../requestContext.js"
 
 const router = Router()
 
+const MAX_AI_CALLS_PER_HOUR = 60
+
+// A review that is not ended and was active in the last 2 hours is "in progress".
+const ACTIVE_WINDOW_MS = 2 * 60 * 60 * 1000
+
+// Every question or answer sent to the AI costs money.
+// Count this user's calls from the last hour and stop when there are too many.
+async function limitAiCalls(_req: Request, res: Response, next: NextFunction) {
+    const userId = String(res.locals.userId)
+    const since = new Date(Date.now() - 60 * 60 * 1000)
+
+    const [questions, answers] = await Promise.all([
+        prisma.interview.count({ where: { userId, createdAt: { gte: since } } }),
+        prisma.message.count({ where: { author: "you", createdAt: { gte: since }, interview: { userId } } }),
+    ])
+
+    if (questions + answers >= MAX_AI_CALLS_PER_HOUR) {
+        return res.status(429).json({ error: "You have reached the hourly limit. Please try again in a while." })
+    }
+    userContext.run({ userId }, next)
+}
+
+const roomSchema = z.object({ diagramId: z.string().min(1).max(100) })
+
 const questionRequestSchema = z.object({
     diagram: diagramInputSchema,
+    diagramId: z.string().min(1).max(100).optional(),
     boxId: z.string(),
+    reviewId: z.uuid(),
     level: z.enum(["foundation", "intermediate", "senior"]).optional(),
     asked: z.array(z.string().max(100)).max(50).optional(),
 })
 
-router.post("/question", async (req, res) => {
+router.post("/question", limitAiCalls, async (req, res) => {
     const parsed = questionRequestSchema.safeParse(req.body)
     if (!parsed.success) {
         return res.status(400).json({ error: "Invalid request" })
     }
-    const { diagram, boxId, level, asked } = parsed.data
+    const { diagram, diagramId, boxId, reviewId, level, asked } = parsed.data
 
     const graph = buildGraph(diagram)
     const box = graph.nodes.get(boxId)
@@ -35,7 +65,238 @@ router.post("/question", async (req, res) => {
     const neighbours = neighboursOf(graph, boxId)
     const question = await askInterviewer({ box, scenario, facts, neighbours })
 
-    return res.json({ done: false, scenarioId: scenario.id, question, facts })
+    // Write the new chat and its first line (the question) into the copy.
+    const interview = await prisma.interview.create({
+        data: {
+            userId: String(res.locals.userId),
+            diagramId,
+            reviewId,
+            boxId,
+            boxLabel: box.label || "this box",
+            scenarioId: scenario.id,
+            messages: { create: { position: 1, author: "interviewer", body: question } },
+        },
+    })
+
+    return res.json({ done: false, interviewId: interview.id, scenarioId: scenario.id, question, facts })
+})
+
+const answerRequestSchema = z.object({
+    diagram: diagramInputSchema,
+    interviewId: z.uuid(),
+    answer: z.string().min(1).max(2000),
+    gradeNow: z.boolean().optional(),
+})
+
+router.post("/answer", limitAiCalls, async (req, res) => {
+    const parsed = answerRequestSchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request" })
+    }
+    const { diagram, interviewId, answer, gradeNow } = parsed.data
+
+    // Find this chat in the copy. Only the owner's own chats are found.
+    const interview = await prisma.interview.findFirst({
+        where: { id: interviewId, userId: String(res.locals.userId) },
+        include: { messages: { orderBy: { position: "asc" } } },
+    })
+    if (!interview) {
+        return res.status(404).json({ error: "Interview not found" })
+    }
+    if (interview.grade) {
+        return res.status(409).json({ error: "This interview is already graded" })
+    }
+
+    const graph = buildGraph(diagram)
+    const box = graph.nodes.get(interview.boxId)
+    if (!box) {
+        return res.status(404).json({ error: "Box not found in diagram" })
+    }
+
+    const scenario = findScenario(interview.scenarioId)
+    if (!scenario) {
+        return res.status(404).json({ error: "Scenario not found" })
+    }
+
+    // The earlier lines come from the copy, not from the browser.
+    const turns = interview.messages.map((m) => ({ from: m.author, text: m.body }))
+
+    const result = await reviewAnswer({
+        box,
+        scenario,
+        facts: findFacts(graph),
+        neighbours: neighboursOf(graph, interview.boxId),
+        turns,
+        answer,
+        gradeNow,
+    })
+
+    // Now write: her answer, and then either the next question or the grade.
+    const next = interview.messages.length + 1
+    if (result.kind === "follow_up") {
+        await prisma.message.createMany({
+            data: [
+                { interviewId, position: next, author: "you", body: answer },
+                { interviewId, position: next + 1, author: "interviewer", body: result.question },
+            ],
+        })
+    } else {
+        await prisma.$transaction([
+            prisma.message.create({ data: { interviewId, position: next, author: "you", body: answer } }),
+            prisma.interview.update({
+                where: { id: interviewId },
+                data: {
+                    grade: result.grade,
+                    feedback: result.feedback,
+                    covered: result.covered,
+                    missing: result.missing,
+                    evidence: result.evidence,
+                    finishedAt: new Date(),
+                },
+            }),
+        ])
+    }
+
+    return res.json(result)
+})
+
+// The review this person has in progress in this room, if any.
+// The page asks this when it loads, so a refresh does not lose the chat.
+router.get("/active", async (req, res) => {
+    const query = roomSchema.safeParse(req.query)
+    if (!query.success) {
+        return res.status(400).json({ error: "Invalid request" })
+    }
+    const userId = String(res.locals.userId)
+    const since = new Date(Date.now() - ACTIVE_WINDOW_MS)
+
+    const latest = await prisma.interview.findFirst({
+        where: { userId, diagramId: query.data.diagramId, endedAt: null, createdAt: { gte: since } },
+        orderBy: { createdAt: "desc" },
+        select: { reviewId: true },
+    })
+    if (!latest) {
+        return res.json({ active: false })
+    }
+
+    const interviews = await prisma.interview.findMany({
+        where: { userId, reviewId: latest.reviewId },
+        orderBy: { createdAt: "asc" },
+        include: { messages: { orderBy: { position: "asc" } } },
+    })
+
+    return res.json({ active: true, reviewId: latest.reviewId, interviews })
+})
+
+// The person pressed End review.
+const endRequestSchema = z.object({ reviewId: z.uuid() })
+
+router.post("/end", async (req, res) => {
+    const parsed = endRequestSchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request" })
+    }
+
+    await prisma.interview.updateMany({
+        where: { reviewId: parsed.data.reviewId, userId: String(res.locals.userId), endedAt: null },
+        data: { endedAt: new Date() },
+    })
+
+    return res.json({ ok: true })
+})
+
+// My past reviews: one entry per review (Start to End), newest first.
+// Add ?diagramId=... to see only the reviews of one room.
+router.get("/interviews", async (req, res) => {
+    const query = roomSchema.partial().safeParse(req.query)
+    if (!query.success) {
+        return res.status(400).json({ error: "Invalid request" })
+    }
+
+    const rows = await prisma.interview.findMany({
+        where: {
+            userId: String(res.locals.userId),
+            ...(query.data.diagramId ? { diagramId: query.data.diagramId } : {}),
+            messages : {some : {author : "you"}}
+        },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: { id: true, reviewId: true, reviewName : true, boxLabel: true, grade: true, createdAt: true },
+    })
+
+  const reviews = new Map<
+        string,
+        {
+            reviewId: string
+            at: Date
+            name: string | null
+            boxes: { interviewId: string; label: string; grade: string | null }[]
+        }
+    >()
+    for (const row of rows) {
+        const review = reviews.get(row.reviewId) ?? { reviewId: row.reviewId, at: row.createdAt, name: null, boxes: [] }
+        review.name = review.name ?? row.reviewName
+        review.boxes.unshift({ interviewId: row.id, label: row.boxLabel, grade: row.grade })
+        reviews.set(row.reviewId, review)
+    }
+
+    return res.json({ reviews: [...reviews.values()] })
+})
+
+// The person gave a review a name (or cleared it with an empty name).
+// This uses POST, like the other routes, so no extra browser rules are needed.
+const renameRequestSchema = z.object({
+    reviewId: z.uuid(),
+    name: z.string().trim().max(60).nullable(),
+})
+
+router.post("/rename", async (req, res) => {
+    const parsed = renameRequestSchema.safeParse(req.body)
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request" })
+    }
+    const name = parsed.data.name === "" ? null : parsed.data.name
+
+    const result = await prisma.interview.updateMany({
+        where: { reviewId: parsed.data.reviewId, userId: String(res.locals.userId) },
+        data: { reviewName: name },
+    })
+    if (result.count === 0) {
+        return res.status(404).json({ error: "Review not found" })
+    }
+
+    return res.json({ ok: true, name })
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// One past interview with all its lines. Only the owner can open it.
+router.get("/interviews/:id", async (req, res) => {
+    const id = z.uuid().safeParse(req.params.id)
+    if (!id.success) {
+        return res.status(400).json({ error: "Invalid request" })
+    }
+
+    const interview = await prisma.interview.findFirst({
+        where: { id: id.data, userId: String(res.locals.userId) },
+        include: { messages: { orderBy: { position: "asc" } } },
+    })
+    if (!interview) {
+        return res.status(404).json({ error: "Interview not found" })
+    }
+
+    return res.json(interview)
 })
 
 export default router

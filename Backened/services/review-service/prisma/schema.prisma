@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Grade {
+  missed
+  partial
+  solid
+}
+
+enum Author {
+  interviewer
+  you
+}
+
+model Interview {
+  id         String    @id @default(uuid())
+  userId     String
+  reviewId   String
+  boxId      String
+  boxLabel   String
+  scenarioId String
+  grade      Grade?
+  feedback   String?
+  covered    Json      @default("[]")
+  missing    Json      @default("[]")
+  evidence   Json      @default("[]")
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+  diagramId  String?
+  endedAt    DateTime?
+  reviewName String?
+  messages   Message[]
+
+  @@index([userId, createdAt])
+  @@index([reviewId])
+  @@index([userId, diagramId,createdAt])
+}
+
+model Message {
+  id          Int       @id @default(autoincrement())
+  interviewId String
+  position    Int
+  author      Author
+  body        String
+  createdAt   DateTime  @default(now())
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@unique([interviewId, position])
+}
+
+
+
+model AiCall {
+  id           Int      @id @default(autoincrement())
+  userId       String?   // to know which user made each ai call 
+  model        String
+  kind         String
+  ms           Int
+  inputTokens  Int
+  outputTokens Int
+  ok           Boolean
+  error        String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}

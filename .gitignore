@@ -8,3 +8,6 @@ dist/
 .windsurf/
 src/generated
 **/.env
+
+# practice and test scripts
+try-*.ts 

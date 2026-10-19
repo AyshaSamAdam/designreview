@@ -29,5 +29,6 @@ export function pickScenario( box: Box, options: { level?: Level; asked?: string
         }))
         .sort((a, b) => a.distance - b.distance)
 
-    return candidates[0]?.scenario ?? null
+    const closest = candidates.filter((c) => c.distance === candidates[0]?.distance)
+    return closest[Math.floor(Math.random() * closest.length)]?.scenario ?? null
 }

@@ -53,3 +53,34 @@ export type Scenario = z.infer<typeof scenarioSchema>
 //       your editor underlines titel in red and says it doenst exist on Scenario. YOU catch the typo before you run anything an dif u type s. it will suggest id, title , level, and others mention in  (scenarioSchema)
 // 
 // "
+
+
+// PROBLEM THAT THSI PIECE OF CODE SOLVES (61 TO 67 )
+// RN YOUR SCENARIOS ARE STORED IN MANY DIFFERENT DRAWERS 
+
+// LIBRARY.ROLES.DATABSE.SCENARIOS - > [datbase.primary-dies, database.slow-queries, ....10 items]
+// LIBRARY.ROLES.service.SCENARIOS  -> [service.crashes, ... 6 items ]
+// LIBRARY.ROLES.cache.SCENARIOS   -> [...]
+// .... 17 roles
+// library.system.scenarios ->     [11 items]
+
+
+
+// the  browser only send "database.primary-dies"
+// to get the full scenario without byId the server would open drawer after drawer and check every item until it found it . that is slow and messy 
+
+
+// " SCENARIOS looked up by id "
+const byId = new Map<string, Scenario>()
+for (const role of Object.values(library.roles)) {
+    for (const scenario of role.scenarios) byId.set(scenario.id, scenario)
+}
+for (const scenario of library.system.scenarios) byId.set(scenario.id, scenario)
+
+export const findScenario = (id: string) => byId.get(id)
+
+// so byId has the the like from browser it came as "database-primary-dies" 
+// and byId.get("database-primary-dies")  this thing came   and in byId we are setting what the id and and the sceario objects 
+// look we are saying taht (scenario.id, and the sceario )  so sceanrio object whole object is returned 
+// and if we send something like findScenario("rubbish") it willl look for that id in the libarray and the sceario for it it wont find it and returns undefined 
+//  so its easy now to find a  scenario 
