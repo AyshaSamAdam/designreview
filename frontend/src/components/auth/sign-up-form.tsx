@@ -54,7 +54,7 @@ export function SignUpForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <TextField id="name" label="NAME" autoComplete="name" placeholder="Ayesha" required />
+      <TextField id="name" label="NAME" autoComplete="name" placeholder="Enter Your Name" required />
       <TextField id="email" label="EMAIL" type="email" autoComplete="email" placeholder="you@example.com" required />
       <TextField
         id="password"

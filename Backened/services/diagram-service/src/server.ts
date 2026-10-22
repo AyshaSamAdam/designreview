@@ -16,5 +16,5 @@ const env = envSchema.parse(process.env)
 
 
 app.listen(env.PORT, () => {
-    console.log(`diaram service is running on port ${env.PORT}`)
+    console.log(`diaramg service is running on port ${env.PORT}`)
 })

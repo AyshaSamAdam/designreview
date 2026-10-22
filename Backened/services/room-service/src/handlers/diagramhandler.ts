@@ -3,6 +3,9 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import debounce from "lodash.debounce";
 
+// Diagram service ka address. Computer par localhost, Docker mein compose se aayega.
+const DIAGRAM_URL = process.env.DIAGRAM_SERVICE_URL ?? "http://localhost:4002";
+
 function passFor(userId: string) {
   return jwt.sign({ userId }, process.env.JWT_SECRET as string, { expiresIn: "1m" });
 }
@@ -10,7 +13,7 @@ function passFor(userId: string) {
 const saveDiagram = debounce(async (diagramId: string, nodes: any, userId: string) => {
   try {
     await axios.patch(
-      `http://localhost:4002/diagrams/${diagramId}`,
+      `${DIAGRAM_URL}/diagrams/${diagramId}`,
       { nodes },
       { headers: { Authorization: `Bearer ${passFor(userId)}` } }
     );
@@ -23,7 +26,7 @@ const saveDiagram = debounce(async (diagramId: string, nodes: any, userId: strin
 const saveEdges = debounce(async (diagramId: string, edges: any, userId: string) => {
   try {
     await axios.patch(
-      `http://localhost:4002/diagrams/${diagramId}`,
+      `${DIAGRAM_URL}/diagrams/${diagramId}`,
       { edges },
       { headers: { Authorization: `Bearer ${passFor(userId)}` } }
     );
@@ -49,15 +52,12 @@ function membersOf(sockets: { data: any }[]): Member[] {
   return [...byUser.values()];
 }
 
-
-
-
 export function registerDiagramHandlers(io: Server, socket: Socket) {
   socket.on("join-room", async (diagramId: string) => {
     try {
       const userId = socket.data.userId;
 
-      const response = await axios.get(`http://localhost:4002/diagrams/${diagramId}`, {
+      const response = await axios.get(`${DIAGRAM_URL}/diagrams/${diagramId}`, {
         headers: { Authorization: `Bearer ${passFor(userId)}` },
       });
 
@@ -68,7 +68,6 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
         nodes: response.data.nodes,
         edges: response.data.edges,
       });
-
 
       const socketsInRoom = await io.in(diagramId).fetchSockets();
       io.to(diagramId).emit("presence-update", membersOf(socketsInRoom));
@@ -83,7 +82,7 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
       if (room === socket.id) return;
 
       const socketsInRoom = await io.in(room).fetchSockets();
-      
+
       const remaining = socketsInRoom.filter((s) => s.id !== socket.id);
       io.to(room).emit("presence-update", membersOf(remaining));
     });
@@ -109,7 +108,6 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
     saveEdges(data.diagramId, data.edges, socket.data.userId);
   });
 
-
   socket.on("notes-update", (data: { diagramId: string; notes: string }) => {
     if (!socket.rooms.has(data.diagramId)) {
       console.log(`Socket ${socket.id} tried to update notes in room ${data.diagramId} without joining it`);
@@ -120,11 +118,7 @@ export function registerDiagramHandlers(io: Server, socket: Socket) {
       console.log(`Socket ${socket.id} sent invalid notes`);
       return;
     }
-        // data.diagramId is the room so socket.to(room).emit(notes are updated guyzzz )
+    // data.diagramId is the room so socket.to(room).emit(notes are updated guyzzz )
     socket.to(data.diagramId).emit("notes-update", data.notes);
   });
-
-
-
-
 }
