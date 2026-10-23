@@ -5,6 +5,41 @@ import { Prisma } from "@prisma/client";
 import redis from "../redis.js";
 import  crypto from "crypto"
 import { prompts } from "../data/prompts.js";
+import { asyncWrapProviders } from "async_hooks";
+
+
+
+
+
+
+async function readCache(key: string): Promise<string | null> {
+  try {
+    return await redis.get(key)
+  } catch (error) {
+    console.error("Redis read failed, using the database instead:", error)
+    return null
+  }
+}
+
+async function writeCache(key: string, value: string) {
+  try {
+    await redis.set(key, value, "EX", 300)
+  } catch (error) {
+    console.error("Redis write failed, skipping the cache:", error)
+  }
+}
+
+async function clearCache(diagramId: string) {
+  try {
+    await redis.del(`diagram:${diagramId}`)
+  } catch (error) {
+    console.error("Redis clear failed:", error)
+  }
+}
+
+
+
+
 
 function withPromptInfo<T extends { promptId: string | null }>(diagram: T) {
   const found = diagram.promptId ? prompts.find((p) => p.id === diagram.promptId) : undefined;
@@ -83,41 +118,6 @@ export async function getAllDiagrams(req: authRequest, res: Response) {
 
 }
 
-// export async function getOneDiagram(req : authRequest, res :Response) {
-//       const  id = req.params.id as string;
-
-//       try{
-
-//         const diagram = await prisma.diagram.findUnique({
-//             where  : { id}
-//         })
-
-//         if (!diagram) {
-//             return res.status(404).json({
-//                 error : "Diagram not found"
-//             })
-//         }
-
-//         if (diagram.userId !== req.userId) {
-//              return res.status(403).json({
-//                 error : "Forbidden "
-//             })
-//         }
-
-//         return res.status(200).json(diagram)
-
-
-//       }
-//       catch(error ) {
-//         console.log(error)
-//         return res.status(500).json({
-//              error : "Something Went Wrong"
-//         })
-
-//       }
-
-
-// }
 
 
 async function hasAccess(diagramId : string, ownerId : string, userId : string) {
@@ -138,7 +138,7 @@ export async function getOneDiagram(req: authRequest, res: Response) {
   const cacheKey = `diagram:${id}`;
 
   try {
-    const cached = await redis.get(cacheKey);
+    const cached = await readCache(cacheKey);
 
     if (cached) {
       const diagram = JSON.parse(cached);
@@ -160,7 +160,7 @@ export async function getOneDiagram(req: authRequest, res: Response) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    await redis.set(cacheKey, JSON.stringify(diagram), "EX", 300);
+    await writeCache(cacheKey, JSON.stringify(diagram));
 
     return res.status(200).json(diagram);
   } catch (err) {
@@ -205,8 +205,7 @@ export async function updateDiagram(req: authRequest, res: Response) {
       }
     })
 
-    await redis.del(`diagram:${id}`)
-
+    await clearCache(id)
     return res.status(200).json(updated)
 
 
@@ -242,8 +241,7 @@ export async function togglePublic(req: authRequest, res: Response) {
       data: { isPublic: !diagram.isPublic }
     })
 
-    redis.del(`diagram:${id}`)
-
+    await clearCache(id)
 
     return res.status(200).json({ id: updated.id, isPublic: updated.isPublic })
 
@@ -425,7 +423,7 @@ export async function deleteDiagram(req: authRequest, res: Response) {
     }
 //     DELETING THE DIAGRAM AUTOMATICAALY DELTES THE GUEST LIST AND INVITES BCZ WE MARKED THOSE TABLES ONDELETE : CASCADE EARLIER NO NEE DTO WRITE EXTRA CODE FOR THAT   
     await prisma.diagram.delete({ where: { id } });
-    await redis.del(`diagram:${id}`);
+    await  clearCache(id)
 
     //  204 MEANS DONE NOTHING TO SEND BACK 
     return res.status(204).send();
