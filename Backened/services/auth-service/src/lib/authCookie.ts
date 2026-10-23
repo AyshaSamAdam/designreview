@@ -2,6 +2,8 @@ import { Response } from "express";
 
 const isProd = process.env.NODE_ENV === "production";
 
+const OAUTH_COOKIE_PATH = process.env.OAUTH_COOKIE_PATH ?? "/auth/google";
+
 const base = {
   httpOnly: true,
   secure: isProd,
@@ -19,10 +21,10 @@ export function clearAuthCookies(res: Response) {
   res.clearCookie("refresh_token", base);
 }
 
-export function setOauthStateCookie(res : Response, state : string) {
-    res.cookie("oauth_state", state, {...base, path : "/auth/google", maxAge: 10 * 60 * 1000})
+export function setOauthStateCookie(res: Response, state: string) {
+  res.cookie("oauth_state", state, { ...base, path: OAUTH_COOKIE_PATH, maxAge: 10 * 60 * 1000 });
 }
 
-export function clearOauthStateCookie(res : Response) {
-    res.clearCookie("oauth_state", {...base, path :"/auth/google"})
+export function clearOauthStateCookie(res: Response) {
+  res.clearCookie("oauth_state", { ...base, path: OAUTH_COOKIE_PATH });
 }

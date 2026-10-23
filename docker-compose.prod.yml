@@ -1,0 +1,35 @@
+services:
+  gateway:
+    volumes:
+      - ./Backened/api-gateway/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - auth-service
+      - diagram-service
+      - review-service
+      - room-service
+      - frontend
+
+  auth-service:
+    ports: !reset []
+    environment:
+      GOOGLE_REDIRECT_URI: http://localhost:8080/api/auth/google/callback
+      OAUTH_COOKIE_PATH: /api/auth/google
+
+  diagram-service:
+    ports: !reset []
+  review-service:
+    ports: !reset []
+  room-service:
+    ports: !reset []
+  frontend:
+    ports: !reset []
+  postgres-auth:
+    ports: !reset []
+  postgres-diagram:
+    ports: !reset []
+  postgres-review:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  rabbitmq:
+    ports: !reset []

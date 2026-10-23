@@ -130,6 +130,12 @@ services:
         condition: service_started
 
 
+  frontend:
+    profiles: ["apps"]
+    build: ./frontend
+    ports:
+      - "3000:3000"
+
 volumes:
   auth_data:
   diagram_data:

@@ -1,0 +1,21 @@
+name: docker build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create empty .env files
+        run: |
+          for d in auth-service diagram-service review-service room-service; do
+            touch Backened/services/$d/.env
+          done
+
+      - name: Build all images
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile apps build
