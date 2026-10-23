@@ -1,17 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-
-type Prompt = {
-  id: string;
-  title: string;
-  difficulty: "easy" | "medium" | "hard";
-  summary: string;
-  functionalRequirements: string[];
-  nonFunctionalRequirements: string[];
-  scaleHints: string[];
-};
+import { useProblem } from "@/lib/use-problem";
 
 const difficultyColor = {
   easy: "text-good",
@@ -35,45 +24,7 @@ function Section({ title, items }: { title: string; items: string[] }) {
 }
 
 export function PromptBody({ diagramId }: { diagramId: string }) {
-  const [prompt, setPrompt] = useState<Prompt | null>(null);
-  const [missing, setMissing] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const diagramResponse = await apiFetch(`/diagrams/${diagramId}`);
-        if (!diagramResponse.ok) return;
-
-        const diagram = await diagramResponse.json();
-        if (!diagram.promptId) return;
-
-        const promptResponse = await apiFetch(`/prompts/${diagram.promptId}`);
-
-        if (promptResponse.status === 404) {
-          if (!cancelled) setMissing(true);
-          return;
-        }
-
-        if (!promptResponse.ok) return;
-
-        const found: Prompt = await promptResponse.json();
-        if (!cancelled) setPrompt(found);
-      } catch {
-        // The panel is a helper. If it fails, the room still works, so stay quiet.
-      } finally {
-        if (!cancelled) setLoaded(true);
-      }
-    }
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [diagramId]);
+  const { prompt, missing, loaded } = useProblem(diagramId);
 
   if (missing) {
     return <p className="p-4 text-sm text-ink-dim">This question is no longer available.</p>;

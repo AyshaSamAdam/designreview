@@ -115,6 +115,30 @@ describe("POST /review/question", () => {
         expect(res.status).toBe(429)
         expect(fakes.askInterviewer).not.toHaveBeenCalled()
     })
+    it("passes the problem to the interviewer when the page sends one", async () => {
+        db.interview.create.mockResolvedValue({ id: ID })
+        const problem = {
+            title: "Design a URL shortener",
+            summary: "Short links that redirect.",
+            functionalRequirements: [],
+            nonFunctionalRequirements: [],
+            scaleHints: [],
+        }
+        await request(app).post("/review/question").set(asAyesha).send({ ...body, problem })
+        expect(fakes.askInterviewer).toHaveBeenCalledWith(expect.objectContaining({ problem }))
+    })
+
+    it("returns 400 when the problem is far too big", async () => {
+        const problem = {
+            title: "x".repeat(500),
+            summary: "",
+            functionalRequirements: [],
+            nonFunctionalRequirements: [],
+            scaleHints: [],
+        }
+        const res = await request(app).post("/review/question").set(asAyesha).send({ ...body, problem })
+        expect(res.status).toBe(400)
+    })
 
     it("returns 404 when the box is not in the diagram", async () => {
         fakes.buildGraph.mockReturnValue({ nodes: new Map() })

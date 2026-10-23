@@ -56,9 +56,18 @@ describe("findProblem", () => {
     })
 
     it("accepts a question written as a statement (no question mark)", () => {
-        expect(findProblem("Walk me through what happens to the next write.")).toBeNull()
+        expect(findProblem("Say your Redis restarts. What do users see.")).toBeNull()
     })
 
+    it("rejects exam-style wording like walk me through", () => {
+        expect(findProblem("Walk me through what happens to the next write.")).toContain("walk me through")
+    })
+
+    it("rejects a question that is too long", () => {
+        const longQuestion = "What happens " + "to the data ".repeat(20) + "when it fails?"
+        expect(findProblem(longQuestion)).toContain("too long")
+    })
+    
     it("rejects two question marks", () => {
         expect(findProblem("What fails? And what then?")).toContain("2 question marks")
     })

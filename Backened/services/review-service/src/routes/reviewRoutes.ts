@@ -52,6 +52,16 @@ async function limitAiCalls(_req: Request, res: Response, next: NextFunction) {
 
 const roomSchema = z.object({ diagramId: z.string().min(1).max(100) })
 
+
+const problemSchema = z.object({
+    title: z.string().max(120),
+    summary: z.string().max(600),
+    functionalRequirements: z.array(z.string().max(200)).max(12),
+    nonFunctionalRequirements: z.array(z.string().max(200)).max(12),
+    scaleHints: z.array(z.string().max(200)).max(12),
+})
+
+
 const questionRequestSchema = z.object({
     diagram: diagramInputSchema,
     diagramId: z.string().min(1).max(100).optional(),
@@ -59,6 +69,7 @@ const questionRequestSchema = z.object({
     reviewId: z.uuid(),
     level: z.enum(["foundation", "intermediate", "senior"]).optional(),
     asked: z.array(z.string().max(100)).max(50).optional(),
+    problem : problemSchema.optional()
 })
 
 router.post("/question", limitAiCalls, async (req, res) => {
@@ -66,7 +77,7 @@ router.post("/question", limitAiCalls, async (req, res) => {
     if (!parsed.success) {
         return res.status(400).json({ error: "Invalid request" })
     }
-    const { diagram, diagramId, boxId, reviewId, level, asked } = parsed.data
+    const { diagram, diagramId, boxId, reviewId, level, asked , problem} = parsed.data
 
     const graph = buildGraph(diagram)
     const box = graph.nodes.get(boxId)
@@ -81,9 +92,9 @@ router.post("/question", limitAiCalls, async (req, res) => {
 
     const facts = findFacts(graph)
     const neighbours = neighboursOf(graph, boxId)
-    const question = await askInterviewer({ box, scenario, facts, neighbours })
+    const allBoxes = Array.from(graph.nodes.values()).map((n) => `${n.label || "(no name)"} [${n.kind}]`)
+    const question = await askInterviewer({ box, scenario, facts, neighbours, allBoxes, problem })
 
-    // Write the new chat and its first line (the question) into the copy.
     const interview = await prisma.interview.create({
         data: {
             userId: String(res.locals.userId),

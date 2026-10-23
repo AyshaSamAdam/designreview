@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Edge, Node } from "reactflow";
 import { apiFetch } from "@/lib/api";
 import { MIN_BOXES, MIN_EDGES } from "@/components/room/review-bar";
+import { problemForReview, useProblem } from "@/lib/use-problem";
 
 type Grade = "missed" | "partial" | "solid";
 
@@ -457,6 +458,7 @@ export function InterviewChat({
   onIdle,
   userName,
 }: Props) {
+  const {prompt : problem} = useProblem(diagramId)
   const [messages, setMessages] = useState<Message[]>([]);
   const [thinking, setThinking] = useState(false);
   const [draft, setDraft] = useState("");
@@ -507,6 +509,7 @@ export function InterviewChat({
           boxId,
           reviewId: reviewId.current,
           asked: askedScenarios.current.slice(-50),
+          problem : problemForReview(problem)
         }),
       });
       if (mySession !== session.current) return; // the review ended while we waited
