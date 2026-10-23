@@ -81,7 +81,7 @@ export function NotesBar({ diagramId, socket }: { diagramId: string ; socket : S
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-4 py-2 font-mono text-xs uppercase text-ink-dim hover:text-ink"
+        className="flex w-full items-center justify-between px-4 py-2.5 font-sans text-[11px] font-semibold tracking-[0.12em] text-ink-dim uppercase transition-colors hover:text-brand"
       >
         <span>Notes{text.trim() ? " (written)" : ""}</span>
         <span>{open ? "Hide" : "Show"}</span>
@@ -101,7 +101,7 @@ export function NotesBar({ diagramId, socket }: { diagramId: string ; socket : S
               setText(e.target.value);
               socket?.emit("notes-update", {diagramId , notes : e.target.value})
             }}
-            className="w-full resize-none rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+            className="w-full resize-none rounded-xl border border-line bg-void px-3 py-2.5 text-sm leading-6 transition focus:bg-panel"
           />
           <div className="mt-1 flex justify-between font-mono text-xs text-ink-dim">
             <span>{statusText}</span>

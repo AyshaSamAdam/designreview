@@ -125,7 +125,7 @@ export function RightPanel({
             >
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            {showDot && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-400" />}
+            {showDot && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-good ring-2 ring-panel" />}
           </button>
         </aside>
       )}
@@ -158,13 +158,13 @@ export function RightPanel({
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => onTabChange(t.id)}
-                className={`relative rounded-md px-3 py-1.5 font-mono text-xs ${
-                  tab === t.id ? "bg-elevated text-ink" : "text-ink-dim hover:text-ink"
+                className={`relative rounded-lg px-3 py-1.5 font-sans text-xs font-medium transition-colors ${
+                    tab === t.id ? "bg-elevated text-ink shadow-sm" : "text-ink-dim hover:text-ink"
                 }`}
               >
                 {t.label}
                 {t.id === "interview" && showDot && (
-                  <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-good ring-2 ring-panel" />
                 )}
               </button>
             ))}

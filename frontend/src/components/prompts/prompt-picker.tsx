@@ -127,7 +127,7 @@ export function PromptPicker() {
               type="button"
               onClick={() => start({ title: p.title, promptId: p.id }, p.id)}
               disabled={starting !== null}
-              className="flex h-full w-full flex-col rounded-xl border border-line bg-panel p-5 text-left transition-colors hover:border-brand disabled:opacity-60"
+              className="group flex h-full w-full flex-col rounded-2xl border border-line bg-panel p-6 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_18px_38px_-26px_rgba(32,47,45,0.34)] disabled:opacity-60"
             >
               <span className={`font-mono text-xs uppercase ${difficultyColor[p.difficulty]}`}>
                 {p.difficulty}
@@ -154,7 +154,7 @@ export function PromptPicker() {
             type="button"
             onClick={() => start({ title: "Untitled design" }, "scratch")}
             disabled={starting !== null}
-            className="flex h-full min-h-40 w-full flex-col justify-center rounded-xl border border-dashed border-line p-5 text-left transition-colors hover:border-brand disabled:opacity-60"
+            className="flex h-full min-h-40 w-full flex-col justify-center rounded-2xl border border-dashed border-line bg-panel/55 p-6 text-left transition duration-200 hover:border-brand/50 hover:bg-panel disabled:opacity-60"
           >
             <span className="font-display text-base font-semibold">Start from scratch</span>
             <span className="mt-2 text-sm text-ink-dim">A blank canvas with no question.</span>

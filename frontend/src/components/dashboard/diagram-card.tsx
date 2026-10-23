@@ -30,7 +30,7 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
 });
 
 const smallButton =
-  "rounded-md border border-line px-2.5 py-1 font-mono text-xs transition-colors hover:bg-elevated disabled:opacity-60";
+  "rounded-lg border border-line bg-panel px-3 py-1.5 font-sans text-xs font-medium transition-colors hover:border-brand/30 hover:bg-elevated disabled:opacity-60";
 
 
 const difficultyColor = {
@@ -147,7 +147,7 @@ export function DiagramCard({ diagram, badge, editable = false, onRenamed, onDel
   }
 
   return (
-    <li className="relative rounded-xl border border-line bg-panel p-5 transition-colors hover:border-brand focus-within:border-brand">
+    <li className="relative rounded-2xl border border-line bg-panel p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-[0_18px_38px_-26px_rgba(32,47,45,0.34)] focus-within:border-brand">
       {mode === "rename" ? (
         <form
           onSubmit={(event) => {

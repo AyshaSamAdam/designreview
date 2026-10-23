@@ -22,7 +22,7 @@ export function PresenceAvatars({ members }: { members: Member[] }) {
         <li
           key={member.userId}
           title={member.name}
-          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-panel bg-elevated font-mono text-xs font-medium text-ink"
+          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-panel bg-elevated font-sans text-xs font-semibold text-ink shadow-sm"
         >
           <span aria-hidden="true">{initialsOf(member.name)}</span>
           <span className="sr-only">{member.name}</span>
@@ -31,7 +31,7 @@ export function PresenceAvatars({ members }: { members: Member[] }) {
       {extra > 0 && (
         <li
           title={`${extra} more`}
-          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-panel bg-elevated font-mono text-xs text-ink-dim"
+          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-panel bg-elevated font-sans text-xs font-medium text-ink-dim shadow-sm"
         >
           +{extra}
         </li>

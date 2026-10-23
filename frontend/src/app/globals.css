@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-void: #0b0e14;
-  --color-panel: #131826;
-  --color-elevated: #1a2033;
-  --color-line: #232a3d;
-  --color-ink: #e8ebf2;
-  --color-ink-dim: #8b93a7;
-  --color-ink-faint: #7f889e;
-  --color-brand: #4a9eff;
-  --color-warn: #ffb454;
-  --color-good: #4ade80;
-  --color-bad: #ff6b6b;
+  --color-void: #f5f3ed;
+  --color-panel: #fffefa;
+  --color-elevated: #efeee7;
+  --color-line: #dfded5;
+  --color-ink: #202f2d;
+  --color-ink-dim: #63716d;
+  --color-ink-faint: #84908b;
+  --color-brand: #1f766b;
+  --color-warn: #a9652d;
+  --color-good: #347553;
+  --color-bad: #b94f4b;
 }
 
 @theme inline {
@@ -21,15 +21,106 @@
 }
 .hero-grid {
   background-image:
-    linear-gradient(rgba(74, 158, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 158, 255, 0.07) 1px, transparent 1px);
-  background-size: 36px 36px;
-  mask-image: radial-gradient(ellipse 60% 60% at 50% 30%, black, transparent);
+    linear-gradient(rgba(31, 118, 107, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 118, 107, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 62% 68% at 50% 36%, black, transparent);
 }
 
+::selection {
+  background: rgb(31 118 107 / 18%);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 3px solid rgb(31 118 107 / 45%);
+  outline-offset: 3px;
+}
+
+input,
+textarea {
+  accent-color: var(--color-brand);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-ink-faint);
+}
+
+.react-flow,
+.react-flow__pane {
+  background: var(--color-void);
+}
+
+.react-flow__node-default {
+  min-width: 148px;
+  padding: 14px 18px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 28px rgb(32 47 45 / 9%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.react-flow__node-default.selected,
+.react-flow__node-default:focus {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgb(31 118 107 / 14%), 0 12px 30px rgb(32 47 45 / 12%);
+}
+
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--color-panel);
+  background: var(--color-brand);
+}
+
+.react-flow__edge-path,
+.react-flow__connection-path {
+  stroke: var(--color-brand);
+  stroke-width: 2;
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-panel);
+  box-shadow: 0 8px 22px rgb(32 47 45 / 8%);
+}
+
+.react-flow__controls-button {
+  border-bottom-color: var(--color-line);
+  background: var(--color-panel);
+  fill: var(--color-ink-dim);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--color-elevated);
+}
 
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
+  }
+
+  button:not(:disabled),
+  a {
+    transition-duration: 160ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -291,9 +291,9 @@ export default function RoomPage() {
 
   return (
               <div className="flex h-dvh flex-col bg-void text-ink">
-    <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4 py-2">
+    <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4 py-2.5 shadow-sm">
       <div className="flex min-w-0 items-center gap-4">
-        <Link href="/dashboard" className="shrink-0 font-mono text-sm text-ink-dim hover:text-ink">
+        <Link href="/dashboard" className="shrink-0 font-sans text-sm font-medium text-ink-dim transition-colors hover:text-brand">
           &larr; Dashboard
         </Link>
         <PresenceAvatars members={members} />
@@ -304,7 +304,7 @@ export default function RoomPage() {
           type="button"
           onClick={undo}
           disabled={past.length === 0}
-          className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs hover:bg-elevated disabled:opacity-40"
+          className="rounded-lg border border-line bg-panel px-3 py-1.5 font-sans text-xs font-medium shadow-sm transition-colors hover:border-brand/30 hover:bg-elevated disabled:opacity-40"
         >
           Undo
         </button>
@@ -312,7 +312,7 @@ export default function RoomPage() {
           type="button"
           onClick={redo}
           disabled={future.length === 0}
-          className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs hover:bg-elevated disabled:opacity-40"
+          className="rounded-lg border border-line bg-panel px-3 py-1.5 font-sans text-xs font-medium shadow-sm transition-colors hover:border-brand/30 hover:bg-elevated disabled:opacity-40"
         >
           Redo
         </button>
@@ -322,7 +322,7 @@ export default function RoomPage() {
 
     <div className="relative flex min-h-0 flex-1">
       <div className="flex w-36 shrink-0 flex-col gap-2 border-r border-line bg-panel p-3">
-        <p className="font-mono text-xs uppercase text-ink-dim">Add a box</p>
+        <p className="mb-1 font-sans text-[11px] font-semibold tracking-[0.12em] text-ink-dim uppercase">Add a box</p>
        {[
           { label: "Service", kind: "service" },
           { label: "Database", kind: "database" },
@@ -334,7 +334,7 @@ export default function RoomPage() {
             key={item.kind}
             type="button"
             onClick={() => addNode(item.label, item.kind)}
-            className="rounded-lg border border-line bg-void px-3 py-1.5 text-left font-mono text-xs hover:bg-elevated"
+            className="rounded-lg border border-line bg-void px-3 py-2 text-left font-sans text-xs font-medium transition-colors hover:border-brand/30 hover:bg-elevated"
           >
             {item.label}
           </button>
@@ -357,16 +357,16 @@ export default function RoomPage() {
           <ReviewBar boxCount={boxCount} edgeCount={edges.length} started={reviewStarted} onStart={startReview}  />
 
           {selectedNode && (
-            <div className="absolute bottom-4 left-1/2 z-10 w-80 -translate-x-1/2 rounded-xl border border-line bg-panel p-3">
-              <p className="font-mono text-xs uppercase text-ink-dim">Selected box</p>
+            <div className="absolute bottom-4 left-1/2 z-10 w-80 -translate-x-1/2 rounded-2xl border border-line bg-panel p-4 shadow-[0_18px_48px_-24px_rgba(32,47,45,0.35)]">
+              <p className="font-sans text-[11px] font-semibold tracking-[0.12em] text-ink-dim uppercase">Selected box</p>
               <input
                 value={String(selectedNode.data.label ?? "")}
                 maxLength={60}
                 onFocus={saveSnapshot}
                 onChange={(e) => updateSelectedData({ label: e.target.value })}
-                className="mt-2 w-full rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+                className="mt-2 w-full rounded-lg border border-line bg-void px-3 py-2 text-sm focus:bg-panel"
               />
-              <p className="mt-3 font-mono text-xs uppercase text-ink-dim">Why this box?</p>
+              <p className="mt-3 font-sans text-[11px] font-semibold tracking-[0.12em] text-ink-dim uppercase">Why this box?</p>
               <textarea
                 value={String(selectedNode.data.note ?? "")}
                 maxLength={300}
@@ -374,7 +374,7 @@ export default function RoomPage() {
                 onFocus={saveSnapshot}
                 onChange={(e) => updateSelectedData({ note: e.target.value })}
                 placeholder="Write why you added this box"
-                className="mt-1 w-full resize-none rounded-lg border border-line bg-void px-2 py-1.5 text-sm"
+                className="mt-1 w-full resize-none rounded-lg border border-line bg-void px-3 py-2 text-sm focus:bg-panel"
               />
               <p className="mt-1 text-right font-mono text-xs text-ink-dim">
                 {String(selectedNode.data.note ?? "").length} / 300
@@ -406,5 +406,4 @@ export default function RoomPage() {
   </div>
 );
 }
-
 

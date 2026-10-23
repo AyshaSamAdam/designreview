@@ -21,7 +21,7 @@ export function TextField({
 }: TextFieldProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block font-mono text-xs text-ink-dim">
+      <label htmlFor={id} className="mb-2 block font-sans text-[11px] font-semibold tracking-[0.12em] text-ink-dim">
         {label}
       </label>
       <input
@@ -33,7 +33,7 @@ export function TextField({
         required={required}
         minLength={minLength}
         aria-describedby={hint ? `${id}-hint` : undefined}
-        className="w-full rounded-lg border border-line bg-void px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="w-full rounded-xl border border-line bg-void px-3.5 py-3 text-sm text-ink shadow-inner shadow-ink/5 transition focus:border-brand focus:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       />
       {hint && (
         <p id={`${id}-hint`} className="mt-1.5 text-xs text-ink-faint">

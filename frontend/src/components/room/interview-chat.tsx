@@ -75,9 +75,9 @@ const PRIORITY = ["database", "queue", "cache", "load_balancer", "service"];
 const IDLE_MS = 60_000; // how long without changes before we suggest a review
 
 const GRADE_STYLE: Record<Grade, { label: string; pill: string }> = {
-  missed: { label: "Not yet", pill: "border-red-500/30 bg-red-500/10 text-red-400" },
-  partial: { label: "Partly there", pill: "border-amber-500/30 bg-amber-500/10 text-amber-400" },
-  solid: { label: "Solid", pill: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" },
+  missed: { label: "Not yet", pill: "border-bad/25 bg-bad/10 text-bad" },
+  partial: { label: "Partly there", pill: "border-warn/25 bg-warn/10 text-warn" },
+  solid: { label: "Solid", pill: "border-good/25 bg-good/10 text-good" },
 };
 
 function kindOf(node: Node): string | undefined {
@@ -350,7 +350,7 @@ function ResultCard({ result, about }: { result: GradedResult; about?: string })
 
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{result.feedback}</p>
 
-      <ResultSection title="What you covered" items={result.covered} marker="✓" markerClass="text-emerald-400" />
+      <ResultSection title="What you covered" items={result.covered} marker="✓" markerClass="text-good" />
       <ResultSection title="Worth adding" items={result.missing} marker="→" markerClass="text-ink-dim" />
 
       {result.evidence.length > 0 && (
@@ -378,7 +378,7 @@ function Avatar({ who, initial }: { who: "ai" | "you"; initial: string }) {
       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
         who === "ai"
           ? "border border-line bg-elevated text-ink"
-          : "bg-emerald-500/20 text-emerald-400"
+          : "bg-good/10 text-good"
       }`}
     >
       {who === "ai" ? (

@@ -21,7 +21,7 @@ const agents = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="border-t border-line px-6 py-20">
+    <section id="how-it-works" className="border-t border-line bg-panel/55 px-6 py-20 sm:py-24">
       <div className="mx-auto max-w-5xl">
         <h2 className="text-center font-display text-3xl font-semibold">
           Three agents, one honest review
@@ -32,7 +32,7 @@ export function HowItWorks() {
 
         <ul className="mt-12 grid gap-4 md:grid-cols-3">
           {agents.map((agent) => (
-            <li key={agent.step} className="rounded-xl border border-line bg-panel p-5">
+            <li key={agent.step} className="group rounded-2xl border border-line bg-panel p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-brand/35 hover:shadow-[0_18px_38px_-24px_rgba(32,47,45,0.3)]">
               <p className="font-mono text-[10px] tracking-wide text-brand">{agent.step}</p>
               <h3 className="mt-3 font-display text-lg font-semibold">{agent.name}</h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-dim">{agent.description}</p>

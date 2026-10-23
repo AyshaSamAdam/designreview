@@ -21,7 +21,7 @@ export function ReviewBar({ boxCount, edgeCount, started, onStart }: Props) {
         onClick={onStart}
         disabled={!ready || started}
         title={started ? "Review in progress" : ready ? "Start the interview review" : hint}
-        className="rounded-full border border-line bg-panel px-4 py-2 font-mono text-xs shadow-lg hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-full border border-brand/20 bg-panel px-5 py-2.5 font-sans text-xs font-semibold text-brand shadow-[0_10px_30px_-12px_rgba(32,47,45,0.32)] transition hover:-translate-y-px hover:border-brand/40 hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {started ? "Review running…" : "✨ Start review"}
       </button>

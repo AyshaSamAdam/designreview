@@ -5,7 +5,7 @@ export function NewDesignButton() {
     <div className="mt-6">
       <Link
         href="/prompts"
-        className="inline-block rounded-lg bg-brand px-5 py-2.5 font-mono text-sm font-medium text-void transition-opacity hover:opacity-90"
+        className="inline-block rounded-xl bg-brand px-5 py-3 font-sans text-sm font-semibold text-void shadow-sm transition duration-200 hover:-translate-y-px hover:bg-brand/90 hover:shadow-md"
       >
         New design
       </Link>

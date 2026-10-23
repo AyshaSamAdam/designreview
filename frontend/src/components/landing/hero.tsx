@@ -9,7 +9,7 @@ const exampleNodes = [
 
 function HeroDiagram() {
   return (
-    <div className="relative mx-auto mt-14 max-w-3xl rounded-xl border border-line bg-panel p-6">
+    <div className="relative mx-auto mt-14 max-w-3xl rounded-3xl border border-line/80 bg-panel/95 p-5 text-left shadow-[0_24px_70px_-38px_rgba(32,47,45,0.3)] backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_80px_-36px_rgba(32,47,45,0.34)] sm:p-7">
       <div className="mb-4 flex items-center justify-between font-mono text-[10px] text-ink-faint">
         <span>design_a_url_shortener</span>
         <span className="flex items-center gap-1.5 text-warn">
@@ -54,7 +54,7 @@ function HeroDiagram() {
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden px-6 pt-20 pb-16 text-center">
+    <section className="relative overflow-hidden px-6 pt-20 pb-20 text-center sm:pt-24">
       <div aria-hidden="true" className="hero-grid pointer-events-none absolute inset-0" />
 
       <div className="relative mx-auto max-w-3xl">
@@ -62,13 +62,13 @@ export function Hero() {
           Real-time · Multi-agent · Free to start
         </p>
 
-        <h1 className="mt-5 font-display text-4xl leading-tight font-semibold sm:text-6xl">
+        <h1 className="mt-5 font-display text-4xl leading-[1.08] font-semibold tracking-tight sm:text-6xl">
           Sketch the system.
           <br />
           Get told the <span className="text-brand">truth</span> about it.
         </h1>
 
-        <p className="mx-auto mt-5 max-w-xl text-ink-dim">
+        <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-ink-dim sm:text-lg sm:leading-8">
           Draw your architecture and get honest feedback from an AI reviewer grounded in real
           system design principles. Practice solo, or live with a partner, like a real interview.
         </p>

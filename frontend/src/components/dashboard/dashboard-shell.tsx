@@ -74,7 +74,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6">
+      <div className="flex min-h-screen items-center justify-center bg-void px-6">
         {error ? (
           <p role="alert" className="rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">
             {error}
@@ -90,9 +90,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <header className="border-b border-line">
+      <header className="sticky top-0 z-30 border-b border-line/80 bg-void/90 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4" aria-label="Dashboard">
-          <Link href="/dashboard" className="font-display text-lg font-semibold">
+          <Link href="/dashboard" className="font-display text-lg font-semibold tracking-tight">
             DesignReview
           </Link>
           <div className="flex items-center gap-4">
@@ -101,7 +101,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={handleSignOut}
               disabled={signingOut}
-              className="rounded-lg border border-line px-4 py-2 font-mono text-sm transition-colors hover:bg-elevated disabled:opacity-60"
+              className="rounded-xl border border-line bg-panel px-4 py-2 font-sans text-sm font-medium shadow-sm transition hover:border-brand/30 hover:bg-elevated disabled:opacity-60"
             >
               {signingOut ? "Signing out..." : "Sign out"}
             </button>
@@ -109,13 +109,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-6 py-10 sm:py-12">
         {error && (
           <p role="alert" className="mb-6 rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">
             {error}
           </p>
         )}
-        <h1 className="font-display text-2xl font-semibold">Welcome back, {firstName}</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Welcome back, {firstName}</h1>
         {children}
       </main>
     </>

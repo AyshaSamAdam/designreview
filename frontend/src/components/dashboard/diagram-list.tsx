@@ -170,7 +170,7 @@ export function DiagramList({
     return (
       <section className="mt-8">
         <h2 className="font-display text-lg font-semibold">{title}</h2>
-        <div className="mt-4 rounded-xl border border-dashed border-line px-6 py-12 text-center">
+        <div className="mt-4 rounded-2xl border border-dashed border-line bg-panel/70 px-6 py-14 text-center">
           <p className="font-display text-lg font-semibold">{emptyTitle}</p>
           <p className="mt-2 text-sm text-ink-dim">{emptyText}</p>
         </div>
@@ -200,7 +200,7 @@ export function DiagramList({
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="rounded-lg border border-line px-4 py-2 font-mono text-sm transition-colors hover:bg-elevated disabled:opacity-60"
+            className="rounded-xl border border-line bg-panel px-4 py-2.5 font-sans text-sm font-medium shadow-sm transition-colors hover:border-brand/30 hover:bg-elevated disabled:opacity-60"
           >
             {loadingMore ? "Loading..." : "Load more"}
           </button>

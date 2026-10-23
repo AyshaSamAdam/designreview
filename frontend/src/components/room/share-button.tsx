@@ -51,13 +51,13 @@ export function ShareButton({ diagramId }: { diagramId: string }) {
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
-        className="rounded-lg bg-brand px-4 py-2 font-mono text-sm font-medium text-void hover:opacity-90"
+        className="rounded-xl bg-brand px-4 py-2.5 font-sans text-sm font-semibold text-void shadow-sm transition hover:-translate-y-px hover:bg-brand/90 hover:shadow-md"
       >
         Share
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 rounded-xl border border-line bg-panel p-4 shadow-lg">
+        <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-line bg-panel p-5 shadow-[0_18px_48px_-24px_rgba(32,47,45,0.35)]">
           <p className="text-sm text-ink">Invite someone to edit this diagram.</p>
           <p className="mt-1 text-xs text-ink-dim">
             Anyone with the link who is signed in can edit. The link works for 7 days.
@@ -68,7 +68,7 @@ export function ShareButton({ diagramId }: { diagramId: string }) {
               type="button"
               onClick={createLink}
               disabled={loading}
-              className="mt-3 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm hover:bg-elevated disabled:opacity-60"
+              className="mt-3 w-full rounded-xl border border-line bg-void px-3 py-2.5 font-sans text-sm font-medium transition-colors hover:border-brand/30 hover:bg-elevated disabled:opacity-60"
             >
               {loading ? "Creating..." : "Create invite link"}
             </button>

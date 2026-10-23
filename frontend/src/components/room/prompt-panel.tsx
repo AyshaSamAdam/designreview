@@ -88,12 +88,12 @@ export function PromptBody({ diagramId }: { diagramId: string }) {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-5">
       <p className={`font-mono text-xs uppercase ${difficultyColor[prompt.difficulty]}`}>
         {prompt.difficulty}
       </p>
-      <h2 className="mt-1 font-display text-base font-semibold">{prompt.title}</h2>
-      <p className="mt-3 text-sm text-ink-dim">{prompt.summary}</p>
+      <h2 className="mt-2 font-display text-lg font-semibold tracking-tight">{prompt.title}</h2>
+      <p className="mt-3 text-sm leading-6 text-ink-dim">{prompt.summary}</p>
       <Section title="What it must do" items={prompt.functionalRequirements} />
       <Section title="How well it must do it" items={prompt.nonFunctionalRequirements} />
       <Section title="Scale" items={prompt.scaleHints} />

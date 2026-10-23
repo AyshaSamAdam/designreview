@@ -9,12 +9,12 @@ export const metadata: Metadata = {
 
 export default function PromptsPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <Link href="/dashboard" className="font-mono text-sm text-ink-dim hover:text-ink">
+    <main className="mx-auto max-w-6xl px-6 py-10 sm:py-12">
+      <Link href="/dashboard" className="font-sans text-sm font-medium text-ink-dim transition-colors hover:text-brand">
         &larr; Dashboard
       </Link>
-      <h1 className="mt-6 font-display text-2xl font-semibold">Choose a question</h1>
-      <p className="mt-2 text-sm text-ink-dim">
+      <h1 className="mt-7 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Choose a question</h1>
+      <p className="mt-3 max-w-2xl text-base leading-7 text-ink-dim">
         Pick an interview question to design for, or start from a blank canvas.
       </p>
       <PromptPicker />

@@ -72,7 +72,7 @@ export function InviteAccept({ code }: { code: string }) {
             </p>
             <Link
               href="/dashboard"
-              className="mt-6 inline-block rounded-lg border border-line px-4 py-2 font-mono text-sm hover:bg-elevated"
+              className="mt-6 inline-block rounded-xl border border-line bg-panel px-4 py-2.5 font-sans text-sm font-medium shadow-sm transition-colors hover:border-brand/30 hover:bg-elevated"
             >
               Go to dashboard
             </Link>
