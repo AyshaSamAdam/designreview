@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ButtonLink } from "@/components/ui/button-link";
+import { NavbarActions } from "@/components/landing/navbar-actions";
 
 function LogoMark() {
   return (
@@ -30,10 +30,7 @@ export function Navbar() {
           How it works
         </a>
 
-        <div className="flex items-center gap-3">
-          <ButtonLink href="/sign-in" variant="secondary">Sign in</ButtonLink>
-          <ButtonLink href="/sign-up">Start practicing</ButtonLink>
-        </div>
+        <NavbarActions />
       </nav>
     </header>
   );

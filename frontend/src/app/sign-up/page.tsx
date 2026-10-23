@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { SignUpForm } from "@/components/auth/sign-up-form";
+import { RedirectIfSignedIn } from "@/components/auth/redirect-if-signed-in";
 
 export const metadata: Metadata = {
   title: "Create account | DesignReview",
@@ -11,6 +12,7 @@ export default function SignUpPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
+      <RedirectIfSignedIn />
       <div className="w-full max-w-sm rounded-3xl border border-line bg-panel p-8 shadow-[0_24px_70px_-44px_rgba(32,47,45,0.34)] sm:p-9">
         <Link href="/" className="text-sm text-ink-dim transition-colors hover:text-ink">
           ← Back to home

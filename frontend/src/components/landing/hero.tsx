@@ -1,4 +1,4 @@
-import { ButtonLink } from "@/components/ui/button-link";
+import { HeroActions } from "@/components/landing/hero-actions";
 
 const exampleNodes = [
   { x: 20, y: 20, type: "CLIENT", name: "Web App", flagged: false },
@@ -59,7 +59,7 @@ export function Hero() {
 
       <div className="relative mx-auto max-w-3xl">
         <p className="font-mono text-xs tracking-[0.14em] text-brand uppercase">
-          Real-time · Multi-agent · Free to start
+          Real-time · AI-reviewed · Free to start
         </p>
 
         <h1 className="mt-5 font-display text-4xl leading-[1.08] font-semibold tracking-tight sm:text-6xl">
@@ -73,10 +73,7 @@ export function Hero() {
           system design principles. Practice solo, or live with a partner, like a real interview.
         </p>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <ButtonLink href="/sign-up">Try &ldquo;Design a URL Shortener&rdquo; →</ButtonLink>
-          <ButtonLink href="#how-it-works" variant="secondary">See how it works</ButtonLink>
-        </div>
+        <HeroActions />
       </div>
 
       <HeroDiagram />
