@@ -12,6 +12,7 @@ const db = vi.hoisted(() => ({
     },
     message: { count: vi.fn(), create: vi.fn(), createMany: vi.fn() },
     $transaction: vi.fn(),
+    aiCall : {count : vi.fn()}
 }))
 
 const fakes = vi.hoisted(() => ({
@@ -71,6 +72,7 @@ beforeEach(() => {
 
     db.interview.count.mockResolvedValue(0)
     db.message.count.mockResolvedValue(0)
+    db.aiCall.count.mockResolvedValue(0)
     fakes.buildGraph.mockReturnValue({ nodes: new Map([["box1", { kind: "cache", label: "Redis", note: "" }]]) })
     fakes.findFacts.mockReturnValue({})
     fakes.neighboursOf.mockReturnValue({ incoming: [], outgoing: [] })
@@ -103,6 +105,12 @@ describe("POST /review/question", () => {
     it("returns 429 after the hourly limit, and never calls the AI", async () => {
         db.interview.count.mockResolvedValue(40)
         db.message.count.mockResolvedValue(20) // 40 + 20 = 60
+        const res = await request(app).post("/review/question").set(asAyesha).send(body)
+        expect(res.status).toBe(429)
+        expect(fakes.askInterviewer).not.toHaveBeenCalled()
+    })
+    it("returns 429 when the daily limit for all users is reached, and never calls the AI", async () => {
+        db.aiCall.count.mockResolvedValue(200)
         const res = await request(app).post("/review/question").set(asAyesha).send(body)
         expect(res.status).toBe(429)
         expect(fakes.askInterviewer).not.toHaveBeenCalled()
@@ -157,6 +165,40 @@ describe("POST /review/answer", () => {
         const res = await request(app).post("/review/answer").set(asAyesha).send(body)
         expect(res.status).toBe(409)
         expect(fakes.reviewAnswer).not.toHaveBeenCalled()
+    })
+
+    it("returns 409 (not 500) when the database says this answer was already saved", async () => {
+        db.interview.findFirst.mockResolvedValue(ungradedInterview)
+        fakes.reviewAnswer.mockResolvedValue({ kind: "follow_up", question: "And then?" })
+        // This is what Prisma throws when two requests save the same line.
+        db.message.createMany.mockRejectedValue({ code: "P2002" })
+
+        const res = await request(app).post("/review/answer").set(asAyesha).send(body)
+
+        expect(res.status).toBe(409)
+    })
+
+    it("returns 409 for a second answer while the first is still being checked, and calls the AI only once", async () => {
+        db.interview.findFirst.mockResolvedValue(ungradedInterview)
+
+       
+        let finishThinking: (value: unknown) => void = () => {}
+        fakes.reviewAnswer.mockImplementation(
+            () => new Promise((resolve) => { finishThinking = resolve })
+        )
+
+        
+        const first = request(app).post("/review/answer").set(asAyesha).send(body).then((r) => r)
+        await vi.waitFor(() => expect(fakes.reviewAnswer).toHaveBeenCalledTimes(1))
+
+        const second = await request(app).post("/review/answer").set(asAyesha).send(body)
+        expect(second.status).toBe(409)
+        expect(fakes.reviewAnswer).toHaveBeenCalledTimes(1)
+
+        // Let the first one finish. It should still work normally.
+        finishThinking({ kind: "follow_up", question: "And then?" })
+        const firstResult = await first
+        expect(firstResult.status).toBe(200)
     })
 
     it("saves the answer and the next question on a follow-up", async () => {

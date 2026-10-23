@@ -12,20 +12,38 @@ const router = Router()
 
 const MAX_AI_CALLS_PER_HOUR = 60
 
+// All users together, last 24 hours. Protects the monthly AI budget once the app is public.
+// Set MAX_AI_CALLS_PER_DAY in the environment to change it. Bad or missing values fall back to 200.
+const MAX_AI_CALLS_PER_DAY = Number(process.env.MAX_AI_CALLS_PER_DAY) || 200
+
 // A review that is not ended and was active in the last 2 hours is "in progress".
 const ACTIVE_WINDOW_MS = 2 * 60 * 60 * 1000
 
+
+const answeringNow = new Set<string>()
+
+
+function isAlreadyExistsError(error: unknown): boolean {
+    return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002"
+}
+
+
 // Every question or answer sent to the AI costs money.
-// Count this user's calls from the last hour and stop when there are too many.
+// Count this user's calls from the last hour, and everyone's calls from the last day.
 async function limitAiCalls(_req: Request, res: Response, next: NextFunction) {
     const userId = String(res.locals.userId)
-    const since = new Date(Date.now() - 60 * 60 * 1000)
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-    const [questions, answers] = await Promise.all([
-        prisma.interview.count({ where: { userId, createdAt: { gte: since } } }),
-        prisma.message.count({ where: { author: "you", createdAt: { gte: since }, interview: { userId } } }),
+    const [questions, answers, callsToday] = await Promise.all([
+        prisma.interview.count({ where: { userId, createdAt: { gte: hourAgo } } }),
+        prisma.message.count({ where: { author: "you", createdAt: { gte: hourAgo }, interview: { userId } } }),
+        prisma.aiCall.count({ where: { createdAt: { gte: dayAgo } } }),
     ])
 
+    if (callsToday >= MAX_AI_CALLS_PER_DAY) {
+        return res.status(429).json({ error: "The AI interviewer has reached its daily limit. Please try again tomorrow." })
+    }
     if (questions + answers >= MAX_AI_CALLS_PER_HOUR) {
         return res.status(429).json({ error: "You have reached the hourly limit. Please try again in a while." })
     }
@@ -95,70 +113,89 @@ router.post("/answer", limitAiCalls, async (req, res) => {
     }
     const { diagram, interviewId, answer, gradeNow } = parsed.data
 
-    // Find this chat in the copy. Only the owner's own chats are found.
-    const interview = await prisma.interview.findFirst({
-        where: { id: interviewId, userId: String(res.locals.userId) },
-        include: { messages: { orderBy: { position: "asc" } } },
-    })
-    if (!interview) {
-        return res.status(404).json({ error: "Interview not found" })
+    // Same interview already being answered? Say so, before anything costs money.
+    if (answeringNow.has(interviewId)) {
+        return res.status(409).json({ error: "Your answer is already being checked. Please wait a moment." })
     }
-    if (interview.grade) {
-        return res.status(409).json({ error: "This interview is already graded" })
-    }
+    answeringNow.add(interviewId)
 
-    const graph = buildGraph(diagram)
-    const box = graph.nodes.get(interview.boxId)
-    if (!box) {
-        return res.status(404).json({ error: "Box not found in diagram" })
-    }
-
-    const scenario = findScenario(interview.scenarioId)
-    if (!scenario) {
-        return res.status(404).json({ error: "Scenario not found" })
-    }
-
-    // The earlier lines come from the copy, not from the browser.
-    const turns = interview.messages.map((m) => ({ from: m.author, text: m.body }))
-
-    const result = await reviewAnswer({
-        box,
-        scenario,
-        facts: findFacts(graph),
-        neighbours: neighboursOf(graph, interview.boxId),
-        turns,
-        answer,
-        gradeNow,
-    })
-
-    // Now write: her answer, and then either the next question or the grade.
-    const next = interview.messages.length + 1
-    if (result.kind === "follow_up") {
-        await prisma.message.createMany({
-            data: [
-                { interviewId, position: next, author: "you", body: answer },
-                { interviewId, position: next + 1, author: "interviewer", body: result.question },
-            ],
+    try {
+        // Find this chat in the copy. Only the owner's own chats are found.
+        const interview = await prisma.interview.findFirst({
+            where: { id: interviewId, userId: String(res.locals.userId) },
+            include: { messages: { orderBy: { position: "asc" } } },
         })
-    } else {
-        await prisma.$transaction([
-            prisma.message.create({ data: { interviewId, position: next, author: "you", body: answer } }),
-            prisma.interview.update({
-                where: { id: interviewId },
-                data: {
-                    grade: result.grade,
-                    feedback: result.feedback,
-                    covered: result.covered,
-                    missing: result.missing,
-                    evidence: result.evidence,
-                    finishedAt: new Date(),
-                },
-            }),
-        ])
-    }
+        if (!interview) {
+            return res.status(404).json({ error: "Interview not found" })
+        }
+        if (interview.grade) {
+            return res.status(409).json({ error: "This interview is already graded" })
+        }
 
-    return res.json(result)
+        const graph = buildGraph(diagram)
+        const box = graph.nodes.get(interview.boxId)
+        if (!box) {
+            return res.status(404).json({ error: "Box not found in diagram" })
+        }
+
+        const scenario = findScenario(interview.scenarioId)
+        if (!scenario) {
+            return res.status(404).json({ error: "Scenario not found" })
+        }
+
+        // The earlier lines come from the copy, not from the browser.
+        const turns = interview.messages.map((m) => ({ from: m.author, text: m.body }))
+
+        const result = await reviewAnswer({
+            box,
+            scenario,
+            facts: findFacts(graph),
+            neighbours: neighboursOf(graph, interview.boxId),
+            turns,
+            answer,
+            gradeNow,
+        })
+
+        // Now write: her answer, and then either the next question or the grade.
+        const next = interview.messages.length + 1
+        if (result.kind === "follow_up") {
+            await prisma.message.createMany({
+                data: [
+                    { interviewId, position: next, author: "you", body: answer },
+                    { interviewId, position: next + 1, author: "interviewer", body: result.question },
+                ],
+            })
+        } else {
+            await prisma.$transaction([
+                prisma.message.create({ data: { interviewId, position: next, author: "you", body: answer } }),
+                prisma.interview.update({
+                    where: { id: interviewId },
+                    data: {
+                        grade: result.grade,
+                        feedback: result.feedback,
+                        covered: result.covered,
+                        missing: result.missing,
+                        evidence: result.evidence,
+                        finishedAt: new Date(),
+                    },
+                }),
+            ])
+        }
+
+        return res.json(result)
+    } catch (error) {
+        // Saved twice by two requests at once: not a server fault.
+        if (isAlreadyExistsError(error)) {
+            return res.status(409).json({ error: "This answer was already saved." })
+        }
+        throw error
+    } finally {
+        // Always remove the "busy" note, even if something failed.
+        answeringNow.delete(interviewId)
+    }
 })
+
+
 
 // The review this person has in progress in this room, if any.
 // The page asks this when it loads, so a refresh does not lose the chat.

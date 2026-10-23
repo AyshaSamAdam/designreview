@@ -5,18 +5,18 @@ import cookieParser from "cookie-parser"
 import reviewRoutes from "./routes/reviewRoutes.js"
 import { requireAuth } from "./requireAuth.js"
 
-
 const app = express()
 app.use(helmet())
 app.use(cors({
-    origin: "http://localhost:3000",
+    // The website address allowed to call this service from a browser.
+    // In production set CORS_ORIGIN; the default is for local development.
+    origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
     credentials: true
 }))
-app.use(express.json({ limit: "100kb" })) // turned the text you sent into an object req.body 
+app.use(express.json({ limit: "100kb" })) // turns the text you send into an object: req.body
 app.use(cookieParser())
 
-
-app.use("/review",requireAuth, reviewRoutes)
+app.use("/review", requireAuth, reviewRoutes)
 
 app.get("/health", (req, res) => {
     res.json({ status: "review service is alive" })

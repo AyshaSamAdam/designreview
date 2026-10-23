@@ -19,6 +19,8 @@ services:
     ports: !reset []
   review-service:
     ports: !reset []
+    environment:
+      - MAX_AI_CALLS_PER_DAY=200
   room-service:
     ports: !reset []
   frontend:
