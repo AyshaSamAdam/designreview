@@ -62,6 +62,10 @@ const problemSchema = z.object({
 })
 
 
+function listBoxes(graph: ReturnType<typeof buildGraph>): string[] {
+    return Array.from(graph.nodes.values()).map((n) => `${n.label || "(no name)"} [${n.kind}]`)
+}
+
 const questionRequestSchema = z.object({
     diagram: diagramInputSchema,
     diagramId: z.string().min(1).max(100).optional(),
@@ -74,6 +78,7 @@ const questionRequestSchema = z.object({
 
 router.post("/question", limitAiCalls, async (req, res) => {
     const parsed = questionRequestSchema.safeParse(req.body)
+
     if (!parsed.success) {
         return res.status(400).json({ error: "Invalid request" })
     }
@@ -92,7 +97,7 @@ router.post("/question", limitAiCalls, async (req, res) => {
 
     const facts = findFacts(graph)
     const neighbours = neighboursOf(graph, boxId)
-    const allBoxes = Array.from(graph.nodes.values()).map((n) => `${n.label || "(no name)"} [${n.kind}]`)
+    const allBoxes = listBoxes(graph)
     const question = await askInterviewer({ box, scenario, facts, neighbours, allBoxes, problem })
 
     const interview = await prisma.interview.create({
@@ -115,6 +120,7 @@ const answerRequestSchema = z.object({
     interviewId: z.uuid(),
     answer: z.string().min(1).max(2000),
     gradeNow: z.boolean().optional(),
+    problem : problemSchema.optional()
 })
 
 router.post("/answer", limitAiCalls, async (req, res) => {
@@ -122,7 +128,7 @@ router.post("/answer", limitAiCalls, async (req, res) => {
     if (!parsed.success) {
         return res.status(400).json({ error: "Invalid request" })
     }
-    const { diagram, interviewId, answer, gradeNow } = parsed.data
+    const { diagram, interviewId, answer, gradeNow, problem} = parsed.data
 
     // Same interview already being answered? Say so, before anything costs money.
     if (answeringNow.has(interviewId)) {
@@ -165,6 +171,8 @@ router.post("/answer", limitAiCalls, async (req, res) => {
             turns,
             answer,
             gradeNow,
+            allBoxes : listBoxes(graph),
+            problem,
         })
 
         // Now write: her answer, and then either the next question or the grade.

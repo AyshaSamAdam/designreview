@@ -352,12 +352,11 @@ function ResultCard({ result, about }: { result: GradedResult; about?: string })
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{result.feedback}</p>
 
       <ResultSection title="What you covered" items={result.covered} marker="✓" markerClass="text-good" />
-      <ResultSection title="Worth adding" items={result.missing} marker="→" markerClass="text-ink-dim" />
-
-      {result.evidence.length > 0 && (
+    
+      { result.grade !== "missed" && result.evidence.length > 0 && (
         <details className="text-sm">
           <summary className="cursor-pointer font-mono text-[11px] uppercase text-ink-dim">
-            Your words that counted ({result.evidence.length})
+            What you said that helped ({result.evidence.length})
           </summary>
           <div className="mt-2 space-y-2">
             {result.evidence.map((quote, i) => (
@@ -588,6 +587,7 @@ export function InterviewChat({
           interviewId: thread.interviewId,
           answer: text,
           gradeNow,
+          problem : problemForReview(problem)
         }),
       });
 
