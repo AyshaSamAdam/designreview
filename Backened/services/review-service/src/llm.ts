@@ -15,6 +15,7 @@ function record(data: {
     ok: boolean
     error?: string
 }) {
+    if (process.env.SKIP_AI_TRACING === "1") return 
     prisma.aiCall.create({ data: { model, userId : userContext.getStore()?.userId, ...data } }).catch((err) => {
         console.warn("Could not save AiCall:", err.message)
     })
@@ -53,6 +54,7 @@ export async function askModel(system: string, user: string, maxTokens = 400): P
             model,
             max_tokens: maxTokens,
             system,
+            thinking : {type : "disabled"},
             messages: [{ role: "user", content: user }],
         })
     )

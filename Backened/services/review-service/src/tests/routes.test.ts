@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import request from "supertest"
 
 const db = vi.hoisted(() => ({
@@ -8,11 +8,13 @@ const db = vi.hoisted(() => ({
         findFirst: vi.fn(),
         findMany: vi.fn(),
         updateMany: vi.fn(),
+        groupBy: vi.fn(),
         update: vi.fn(),
     },
     message: { count: vi.fn(), create: vi.fn(), createMany: vi.fn() },
     $transaction: vi.fn(),
-    aiCall : {count : vi.fn()}
+    aiCall : {count : vi.fn()},
+    $queryRaw: vi.fn()
 }))
 
 const fakes = vi.hoisted(() => ({
@@ -291,5 +293,69 @@ describe("other review routes", () => {
         db.interview.findFirst.mockResolvedValue(null)
         const other = await request(app).get(`/review/interviews/${ID}`).set(asAyesha)
         expect(other.status).toBe(404)
+    })
+})
+
+
+describe("GET /review/metrics", () => {
+    const rows = [
+        { kind: "text", calls: 10, failed: 1, avgMs: 900, p95Ms: 1500, inputTokens: 20000, outputTokens: 2000 },
+        { kind: "grade_box", calls: 5, failed: 0, avgMs: 1200, p95Ms: 1800, inputTokens: 15000, outputTokens: 1500 },
+    ]
+    const gradeRows = [
+        { grade: "solid", _count: { _all: 2 } },
+        { grade: "partial", _count: { _all: 3 } },
+    ]
+    beforeEach(() => {
+        process.env.ADMIN_USER_ID = "ayesha"
+    })
+
+    afterEach(() => {
+        delete process.env.ADMIN_USER_ID
+    })
+
+    it("gives everyone else a 404 and never reads the database", async () => {
+        const res = await request(app).get("/review/metrics").set({ "x-test-user": "someone-else" })
+        expect(res.status).toBe(404)
+        expect(db.$queryRaw).not.toHaveBeenCalled()
+    })
+
+    it("gives everyone a 404 when ADMIN_USER_ID is not set", async () => {
+        delete process.env.ADMIN_USER_ID
+        const res = await request(app).get("/review/metrics").set(asAyesha)
+        expect(res.status).toBe(404)
+    })
+
+
+
+
+    it("needs a login", async () => {
+        const res = await request(app).get("/review/metrics")
+        expect(res.status).toBe(401)
+    })
+
+    it("returns totals, and no cost when prices are not set", async () => {
+        db.$queryRaw.mockResolvedValue(rows)
+        db.interview.groupBy.mockResolvedValue(gradeRows)
+        const res = await request(app).get("/review/metrics").set(asAyesha)
+        expect(res.status).toBe(200)
+        expect(res.body.totals).toMatchObject({ calls: 15, failed: 1, inputTokens: 35000, outputTokens: 3500, costUsd: null })
+        expect(res.body.reviews).toEqual({ graded: 5, grades: { missed: 0, partial: 3, solid: 2 } })
+        expect(res.body.costPerGradedReviewUsd).toBeNull()
+    })
+
+    it("works out the cost from the prices in the environment", async () => {
+        db.$queryRaw.mockResolvedValue(rows)
+        db.interview.groupBy.mockResolvedValue(gradeRows)
+        process.env.PRICE_INPUT_PER_MTOK = "1"
+        process.env.PRICE_OUTPUT_PER_MTOK = "5"
+        try {
+            const res = await request(app).get("/review/metrics").set(asAyesha)
+            expect(res.body.totals.costUsd).toBeCloseTo(0.0525, 6)
+            expect(res.body.costPerGradedReviewUsd).toBeCloseTo(0.0105, 6)
+        } finally {
+            delete process.env.PRICE_INPUT_PER_MTOK
+            delete process.env.PRICE_OUTPUT_PER_MTOK
+        }
     })
 })

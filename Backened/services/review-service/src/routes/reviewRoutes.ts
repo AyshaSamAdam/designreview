@@ -347,4 +347,89 @@ router.get("/interviews/:id", async (req, res) => {
     return res.json(interview)
 })
 
+
+// ---------- AI metrics: totals only, no user names, no text ----------
+
+type KindRow = {
+    kind: string
+    calls: number
+    failed: number
+    avgMs: number
+    p95Ms: number
+    inputTokens: number
+    outputTokens: number
+}
+
+function priceOf(name: string): number | null {
+    const raw = process.env[name]
+    if (!raw) return null
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : null
+}
+
+// Dollars per million tokens come from the environment, so we never guess a price.
+function costOf(inputTokens: number, outputTokens: number): number | null {
+    const inPrice = priceOf("PRICE_INPUT_PER_MTOK")
+    const outPrice = priceOf("PRICE_OUTPUT_PER_MTOK")
+    if (inPrice === null || outPrice === null) return null
+    return (inputTokens * inPrice + outputTokens * outPrice) / 1_000_000
+}
+
+router.get("/metrics", async (_req, res) => {
+    const adminId = process.env.ADMIN_USER_ID
+    if (!adminId || res.locals.userId !== adminId) {
+        return res.status(404).json({error : 'Not Found'})
+
+    }
+    const days = 7
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    const [rows, gradeRows] = await Promise.all([
+        prisma.$queryRaw<KindRow[]>`
+            SELECT kind,
+                   COUNT(*)::int AS calls,
+                   (COUNT(*) FILTER (WHERE NOT ok))::int AS failed,
+                   COALESCE(AVG(ms), 0)::float AS "avgMs",
+                   COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY ms), 0)::float AS "p95Ms",
+                   COALESCE(SUM("inputTokens"), 0)::float AS "inputTokens",
+                   COALESCE(SUM("outputTokens"), 0)::float AS "outputTokens"
+            FROM "AiCall"
+            WHERE "createdAt" >= ${since}
+            GROUP BY kind
+            ORDER BY kind`,
+        prisma.interview.groupBy({
+            by: ["grade"],
+            where: { grade: { not: null }, finishedAt: { gte: since } },
+            _count: { _all: true },
+        }),
+    ])
+
+    const byKind = rows.map((r) => ({ ...r, costUsd: costOf(r.inputTokens, r.outputTokens) }))
+
+    const totals = byKind.reduce(
+        (sum, r) => ({
+            calls: sum.calls + r.calls,
+            failed: sum.failed + r.failed,
+            inputTokens: sum.inputTokens + r.inputTokens,
+            outputTokens: sum.outputTokens + r.outputTokens,
+        }),
+        { calls: 0, failed: 0, inputTokens: 0, outputTokens: 0 }
+    )
+    const totalCost = costOf(totals.inputTokens, totals.outputTokens)
+
+    const grades = { missed: 0, partial: 0, solid: 0 }
+    for (const row of gradeRows) {
+        if (row.grade) grades[row.grade] = row._count._all
+    }
+    const graded = grades.missed + grades.partial + grades.solid
+
+    return res.json({
+        windowDays: days,
+        byKind,
+        totals: { ...totals, costUsd: totalCost },
+        reviews: { graded, grades },
+        costPerGradedReviewUsd: totalCost !== null && graded > 0 ? totalCost / graded : null,
+    })
+})
+
 export default router

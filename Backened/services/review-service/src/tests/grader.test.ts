@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { askModelWithTools } from "../llm.js"
-import { reviewAnswer, MAX_FOLLOW_UPS } from "../grader.js"
+import { reviewAnswer, MAX_FOLLOW_UPS, checkGrade, SOLID_MIN_SHARE } from "../grader.js"
 
 // Asli AI ki jagah nakli AI (jaise pehle askModel ke saath kiya tha)
 vi.mock("../llm.js", () => ({ askModelWithTools: vi.fn() }))
@@ -81,6 +81,52 @@ describe("reviewAnswer: grading", () => {
             "Alerts the team",
         ])
     })
+
+    it("changes solid to partial when the quote is real but too few items are covered", async () => {
+        fakeAi.mockResolvedValueOnce(
+            gradeForm({ grade: "solid", covered: [1], quotes: ["Redis in front of the database"], feedback: "Fine." })
+        )
+        const result = await run()
+        expect(result).toMatchObject({ kind: "graded", grade: "partial" })
+    })
+
+    it("changes partial to missed when no item is covered", async () => {
+        fakeAi.mockResolvedValueOnce(gradeForm({ grade: "partial", covered: [], quotes: [], feedback: "Some." }))
+        const result = await run()
+        expect(result).toMatchObject({ kind: "graded", grade: "missed" })
+    })
+})
+
+describe("checkGrade: the code has the last word", () => {
+    it("keeps solid when most items are covered and there is a quote", () => {
+        expect(checkGrade("solid", 2, 3, 1)).toBe("solid")
+    })
+
+    it("changes solid to partial when too few items are covered", () => {
+        expect(checkGrade("solid", 1, 3, 1)).toBe("partial")
+    })
+
+    it("changes solid to partial when there is no quote", () => {
+        expect(checkGrade("solid", 3, 3, 0)).toBe("partial")
+    })
+
+    it("changes partial to missed when nothing is covered", () => {
+        expect(checkGrade("partial", 0, 3, 2)).toBe("missed")
+    })
+
+    it("changes solid all the way to missed when nothing is covered", () => {
+        expect(checkGrade("solid", 0, 3, 2)).toBe("missed")
+    })
+
+    it("never raises a grade", () => {
+        expect(checkGrade("missed", 3, 3, 3)).toBe("missed")
+    })
+
+    it("uses the exact share limit for solid", () => {
+        const enough = Math.ceil(5 * SOLID_MIN_SHARE) // items needed out of 5
+        expect(checkGrade("solid", enough, 5, 1)).toBe("solid")
+        expect(checkGrade("solid", enough - 1, 5, 1)).toBe("partial")
+    })
 })
 
 describe("reviewAnswer: follow-ups", () => {
@@ -93,7 +139,7 @@ describe("reviewAnswer: follow-ups", () => {
     it("forces grading after the follow-up limit", async () => {
         // MAX_FOLLOW_UPS pichle jawab + ye naya jawab = limit se zyada
         const turns = Array.from({ length: MAX_FOLLOW_UPS }, () => ({ from: "you" as const, text: "some answer" }))
-        fakeAi.mockResolvedValueOnce(gradeForm({ grade: "partial", covered: [], quotes: [], feedback: "Ok." }))
+        fakeAi.mockResolvedValueOnce(gradeForm({ grade: "partial", covered: [1], quotes: [], feedback: "Ok." }))
         await run({ turns })
 
         const toolsGiven = fakeAi.mock.calls[0][2]
@@ -111,7 +157,7 @@ describe("reviewAnswer: follow-ups", () => {
 describe("reviewAnswer: bad form from the AI", () => {
     it("tries once more when the form is invalid, then succeeds", async () => {
         fakeAi.mockResolvedValueOnce(gradeForm({ grade: "great", covered: [], quotes: [], feedback: "x" })) // ghalat
-        fakeAi.mockResolvedValueOnce(gradeForm({ grade: "partial", covered: [], quotes: [], feedback: "Ok." })) // sahi
+        fakeAi.mockResolvedValueOnce(gradeForm({ grade: "partial", covered: [1], quotes: [], feedback: "Ok." })) // sahi
         const result = await run()
         expect(fakeAi).toHaveBeenCalledTimes(2)
         expect(result).toMatchObject({ kind: "graded", grade: "partial" })
