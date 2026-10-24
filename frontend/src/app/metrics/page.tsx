@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { report } from "process";
 
 type Row = {
   kind: string;
@@ -29,6 +30,7 @@ const KIND_LABEL: Record<string, string> = {
   ask_follow_up: "Follow-up questions",
   grade_box: "Grading",
   tools: "Other",
+ report_readiness : "Diagram check"
 };
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;

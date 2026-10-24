@@ -6,6 +6,7 @@ import { pickScenario } from "../pickScenario.js"
 import { askInterviewer } from "../interviewer.js"
 import { findScenario } from "../scenarios.js"
 import { reviewAnswer } from "../grader.js"
+import { checkDiagram } from "../rediness.js"
 import { userContext } from "../requestContext.js"
 
 const router = Router()
@@ -96,6 +97,19 @@ router.post("/question", limitAiCalls, async (req, res) => {
     }
 
     const facts = findFacts(graph)
+ 
+
+    // Before the first question: is there enough in the diagram to ask about?
+    const readiness = await checkDiagram({
+        graph,
+        facts,
+        box,
+        problem,
+        isFirstQuestion: (asked?.length ?? 0) === 0,
+    })
+    if (!readiness.ready) {
+        return res.json({ notReady: true, message: readiness.message })
+    }
     const neighbours = neighboursOf(graph, boxId)
     const allBoxes = listBoxes(graph)
     const question = await askInterviewer({ box, scenario, facts, neighbours, allBoxes, problem })

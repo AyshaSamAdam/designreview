@@ -529,6 +529,12 @@ export function InterviewChat({
       const data = await res.json();
       if (mySession !== session.current) return;
 
+
+      if(data.notReady) {
+        add ({from : "interviewer", text : String(data.message)})
+        add({from : "system" , text : "Add to your design, then press Next box"})
+        return;
+      }
       if (data.done) {
         add({ from: "system", text: `No more questions for ${label}. Try another box.` });
         return;
