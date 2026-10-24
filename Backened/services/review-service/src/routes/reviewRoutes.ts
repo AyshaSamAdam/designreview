@@ -6,7 +6,7 @@ import { pickScenario } from "../pickScenario.js"
 import { askInterviewer } from "../interviewer.js"
 import { findScenario } from "../scenarios.js"
 import { reviewAnswer } from "../grader.js"
-import { checkDiagram } from "../rediness.js"
+import { checkDiagram } from "../readiness.js"
 import { userContext } from "../requestContext.js"
 
 const router = Router()

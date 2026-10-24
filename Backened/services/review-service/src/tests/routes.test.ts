@@ -25,6 +25,7 @@ const fakes = vi.hoisted(() => ({
     findScenario: vi.fn(),
     askInterviewer: vi.fn(),
     reviewAnswer: vi.fn(),
+    checkDiagram : vi.fn()
 }))
 
 vi.mock("../db.js", () => ({ default: db }))
@@ -52,8 +53,10 @@ vi.mock("../pickScenario.js", () => ({ pickScenario: fakes.pickScenario }))
 vi.mock("../scenarios.js", () => ({ findScenario: fakes.findScenario }))
 vi.mock("../interviewer.js", () => ({ askInterviewer: fakes.askInterviewer }))
 vi.mock("../grader.js", () => ({ reviewAnswer: fakes.reviewAnswer }))
+vi.mock("../readiness.js", () => ({ checkDiagram: fakes.checkDiagram }))
 
 import app from "../app.js"
+import { checkDiagram } from "../readiness.js"
 
 const ID = "11111111-1111-4111-8111-111111111111"
 const diagram = { nodes: [], edges: [] }
@@ -81,6 +84,8 @@ beforeEach(() => {
     fakes.pickScenario.mockReturnValue({ id: "s1" })
     fakes.findScenario.mockReturnValue({ id: "s1" })
     fakes.askInterviewer.mockResolvedValue("What happens when it fails?")
+    fakes.checkDiagram.mockResolvedValue({ready : true})
+
 })
 
 
@@ -129,6 +134,23 @@ describe("POST /review/question", () => {
         await request(app).post("/review/question").set(asAyesha).send({ ...body, problem })
         expect(fakes.askInterviewer).toHaveBeenCalledWith(expect.objectContaining({ problem }))
     })
+    it("answers with a message and saves nothing when the diagram is not ready", async () => {
+        fakes.checkDiagram.mockResolvedValue({ ready: false, message: "Your boxes are not connected yet." })
+        const res = await request(app).post("/review/question").set(asAyesha).send(body)
+        expect(res.status).toBe(200)
+        expect(res.body).toEqual({ notReady: true, message: "Your boxes are not connected yet." })
+        expect(fakes.askInterviewer).not.toHaveBeenCalled()
+        expect(db.interview.create).not.toHaveBeenCalled()
+    })
+
+    it("only asks for the AI diagram check before the first question", async () => {
+        db.interview.create.mockResolvedValue({ id: ID })
+        await request(app).post("/review/question").set(asAyesha).send(body)
+        expect(fakes.checkDiagram).toHaveBeenLastCalledWith(expect.objectContaining({ isFirstQuestion: true }))
+
+        await request(app).post("/review/question").set(asAyesha).send({ ...body, asked: ["s1"] })
+        expect(fakes.checkDiagram).toHaveBeenLastCalledWith(expect.objectContaining({ isFirstQuestion: false }))
+    })
 
     it("returns 400 when the problem is far too big", async () => {
         const problem = {
@@ -176,6 +198,7 @@ describe("POST /review/answer", () => {
         const res = await request(app).post("/review/answer").set(asAyesha).send({ ...body, answer: "" })
         expect(res.status).toBe(400)
     })
+
 
     it("returns 404 for someone else's interview, because we only search the owner's", async () => {
         db.interview.findFirst.mockResolvedValue(null)
@@ -293,6 +316,22 @@ describe("other review routes", () => {
         db.interview.findFirst.mockResolvedValue(null)
         const other = await request(app).get(`/review/interviews/${ID}`).set(asAyesha)
         expect(other.status).toBe(404)
+    })
+   it("gives the grader the box names and the problem", async () => {
+        const body = { diagram, interviewId: ID, answer: "I would add a cache." }
+        db.interview.findFirst.mockResolvedValue(ungradedInterview)
+        fakes.reviewAnswer.mockResolvedValue({ kind: "follow_up", question: "And then?" })
+        const problem = {
+            title: "Design a chat app",
+            summary: "People send messages.",
+            functionalRequirements: [],
+            nonFunctionalRequirements: [],
+            scaleHints: [],
+        }
+        await request(app).post("/review/answer").set(asAyesha).send({ ...body, problem })
+        expect(fakes.reviewAnswer).toHaveBeenCalledWith(
+            expect.objectContaining({ allBoxes: ["Redis [cache]"], problem })
+        )
     })
 })
 
